@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+data/contact-congress/
+data/congress-legislators/
+.DS_Store
+*.log
