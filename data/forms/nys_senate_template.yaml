@@ -1,0 +1,63 @@
+# NYS Senate — Standardized Drupal contact form template
+# Used for ALL NYS Senators (~26 covering NYC).
+# Each senator has the same form structure at: nysenate.gov/senators/{slug}/contact
+#
+# The senator-specific URL is injected at runtime from nyc_officials.yaml.
+bioguide: nys_senate_template
+contact_form:
+  method: POST
+  action: ""
+  steps:
+    - visit: "$FORM_URL"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='first_name'], #edit-first-name"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='last_name'], #edit-last-name"
+          value: "$NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[type='email'], #edit-email"
+          value: "$EMAIL"
+          required: true
+        - name: phone
+          selector: "input[name='phone'], input[type='tel']"
+          value: "$PHONE"
+          required: false
+        - name: address
+          selector: "input[name='address_1'], #edit-address-1"
+          value: "$ADDRESS_STREET"
+          required: false
+        - name: city
+          selector: "input[name='city'], #edit-city"
+          value: "$ADDRESS_CITY"
+          required: false
+        - name: zip
+          selector: "input[name='zip'], input[name='postal_code'], #edit-zip"
+          value: "$ADDRESS_ZIP5"
+          required: true
+        - name: subject
+          selector: "input[name='subject'], #edit-subject"
+          value: "$SUBJECT"
+          required: false
+        - name: message
+          selector: "textarea[name='message'], textarea[name='body'], #edit-message"
+          value: "$MESSAGE"
+          required: true
+    - select:
+        - name: topic
+          selector: "select[name='topic'], select[name='issue'], #edit-topic"
+          value: "$TOPIC"
+          required: false
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit'], #edit-submit"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

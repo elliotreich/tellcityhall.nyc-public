@@ -1,261 +1,287 @@
 """
-Civic Bridge — Web Application
-Connecting Americans directly to their representatives.
+NYC Bridge — FastAPI web application.
+Contact all your NYC elected officials with one message.
+
+Endpoints:
+  GET  /                  — Serve the single-page web app
+  GET  /api/autocomplete  — Address autocomplete via Census Geocoder
+  POST /api/preview       — Validate address, return 11 officials + contact info
+  POST /api/send          — Deliver message to all officials (email + form)
 """
-import asyncio, sys, json
+import json
+import time
+import traceback
 from pathlib import Path
-from fastapi import FastAPI, Request, Form, Query
+
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import httpx
+from fastapi.templating import Jinja2Templates
 
-sys.path.insert(0, str(Path(__file__).parent))
-from engine.address_validator import validate_and_lookup, Representative
-from engine.yaml_parser import UserContext, load_form, validate_form
-from engine.form_submitter import FormSubmitter
+from config import PROJECT_ROOT, FORM_SUBMIT_TIMEOUT, MAX_CONCURRENT_SUBMISSIONS, DELAY_BETWEEN_SUBMISSIONS
+from engine.nyc_address_resolver import validate_and_resolve, autocomplete
+from engine.nyc_officials import get_officials_for_address, NYCOfficial
+from engine.email_sender import get_email_sender
 
-app = FastAPI(title="Civic Bridge")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app = FastAPI(title="NYC Bridge", version="0.1.0")
 
-_submitter: FormSubmitter | None = None
+# Static files + templates
+static_dir = PROJECT_ROOT / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-
-async def get_submitter() -> FormSubmitter:
-    global _submitter
-    if _submitter is None:
-        _submitter = FormSubmitter()
-        await _submitter.start()
-    return _submitter
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    global _submitter
-    if _submitter:
-        await _submitter.stop()
+templates = Jinja2Templates(directory=str(PROJECT_ROOT / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    return HTMLResponse(content=(Path(__file__).parent / "templates" / "index.html").read_text())
+async def index(request: Request):
+    """Serve the main web application."""
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/api/autocomplete")
-async def address_autocomplete(q: str = Query("", min_length=3)):
-    """Address autocomplete using Census Geocoder."""
-    if len(q) < 3:
+async def api_autocomplete(q: str = ""):
+    """Address autocomplete from Census Geocoder."""
+    if len(q.strip()) < 3:
         return JSONResponse({"suggestions": []})
 
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(
-                "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress",
-                params={
-                    "address": q,
-                    "benchmark": "Public_AR_Current",
-                    "format": "json",
-                }
-            )
-            resp.raise_for_status()
-            data = resp.json()
-    except Exception:
-        return JSONResponse({"suggestions": []})
-
-    suggestions = []
-    for match in data.get("result", {}).get("addressMatches", []):
-        addr = match.get("matchedAddress", "")
-        if addr and addr not in suggestions:
-            suggestions.append(addr)
-
-    return JSONResponse({"suggestions": suggestions[:5]})
+    suggestions = await autocomplete(q)
+    return JSONResponse({"suggestions": suggestions})
 
 
 @app.post("/api/preview")
-async def preview_message(
-    message: str = Form(...),
-    address: str = Form(...),
+async def api_preview(
+    address: str = Form(""),
     first_name: str = Form(""),
     last_name: str = Form(""),
     email: str = Form(""),
+    message: str = Form(""),
     topic: str = Form("Other"),
-    send_to: str = Form("all"),  # "all", "house", "senate"
 ):
-    if not message.strip() or not address.strip():
-        return JSONResponse({"error": "Message and address required."}, status_code=400)
+    """
+    Validate address and return the list of officials who will be contacted.
+    Returns 11 officials: 3 citywide + 1 council + 2 borough + 3 statewide + 2 state leg.
+    """
+    if not message or not message.strip():
+        return JSONResponse({"error": "Please enter a message."}, status_code=400)
 
-    lookup = await validate_and_lookup(address)
-    if not lookup.representatives:
-        return JSONResponse({"error": "Could not find your representatives.", "details": lookup.errors}, status_code=400)
+    if not first_name or not last_name:
+        return JSONResponse({"error": "Please enter your name."}, status_code=400)
 
-    # Filter by chamber if requested
-    reps = lookup.representatives
-    if send_to == "house":
-        reps = [r for r in reps if r.chamber == "house"]
-    elif send_to == "senate":
-        reps = [r for r in reps if r.chamber == "senate"]
+    if not email:
+        return JSONResponse({"error": "Please enter your email address."}, status_code=400)
 
-    if not reps:
-        return JSONResponse({"error": f"No {send_to} representatives found for this address."}, status_code=400)
+    if not address or not address.strip():
+        return JSONResponse({"error": "Please enter your address."}, status_code=400)
 
-    # Load phone numbers
-    import yaml
-    phones = {}
-    with open(Path(__file__).parent / "data" / "congress-legislators" / "legislators-current.yaml") as f:
-        leg_data = yaml.safe_load(f)
-    for m in leg_data:
-        bio = m.get("id", {}).get("bioguide", "")
-        for term in m.get("terms", []):
-            if term.get("end", "") >= "2026-01-01":
-                ph = term.get("phone", "")
-                if ph:
-                    phones[bio] = ph
-                break
+    # Validate address and resolve districts
+    result = await validate_and_resolve(address)
 
-    result_reps = []
-    captchas_needed = []
-    seen_sitekeys = set()
+    if result.errors:
+        return JSONResponse({"error": "; ".join(result.errors)}, status_code=400)
 
-    for r in reps:
-        captcha = _detect_captcha(r.bioguide)
-        sk = captcha["sitekey"]
-        if sk and sk not in seen_sitekeys:
-            seen_sitekeys.add(sk)
-            captchas_needed.append({
-                "type": captcha["type"],
-                "sitekey": sk,
-                "representatives": [r.name],
-            })
+    # Get all officials
+    officials = get_officials_for_address(
+        council_district=result.council_district,
+        borough_code=result.borough_code,
+        state_senate_district=result.state_senate_district,
+        state_assembly_district=result.state_assembly_district,
+    )
 
-        result_reps.append({
-            "bioguide": r.bioguide,
-            "name": r.name,
-            "chamber": r.chamber,
-            "state": r.state,
-            "party": r.party,
-            "phone": phones.get(r.bioguide, ""),
-            "captcha": captcha,
-            "has_yaml": r.has_yaml,
+    # Serialize officials for the frontend
+    preview_data = []
+    for o in officials:
+        preview_data.append({
+            "title": o.title,
+            "name": o.name,
+            "party": o.party,
+            "contact_method": o.contact_method,
+            "email": o.email or "",
+            "form_key": o.form_key or "",
+            "phone": o.phone or "",
+            "jurisdiction": o.jurisdiction,
+            "note": o.note or "",
         })
 
     return JSONResponse({
-        "address": lookup.address.standardized or address,
-        "representatives": result_reps,
-        "captchas_needed": captchas_needed,
-        "warnings": lookup.errors,
-        "auto_submit": len(captchas_needed) == 0,
+        "address": result.address.standardized,
+        "borough": result.borough_code.replace("_", " ").title() if result.borough_code else "",
+        "council_district": result.council_district,
+        "state_senate_district": result.state_senate_district,
+        "state_assembly_district": result.state_assembly_district,
+        "officials": preview_data,
+        "count": len(preview_data),
     })
 
 
 @app.post("/api/send")
-async def send_message(
-    message: str = Form(...),
-    address: str = Form(...),
+async def api_send(
+    address: str = Form(""),
     first_name: str = Form(""),
     last_name: str = Form(""),
     email: str = Form(""),
+    message: str = Form(""),
     topic: str = Form("Other"),
-    send_to: str = Form("all"),
-    captcha_tokens: str = Form(""),
+    subject: str = Form(""),
 ):
-    if not message.strip() or not address.strip():
-        return JSONResponse({"error": "Message and address required."}, status_code=400)
+    """
+    Deliver the message to all officials.
+    Email-based officials get an SMTP email.
+    Form-based officials get Playwright form submission.
+    """
+    if not message or not message.strip():
+        return JSONResponse({"error": "Please enter a message."}, status_code=400)
 
-    tokens = {}
-    if captcha_tokens:
-        try:
-            tokens = json.loads(captcha_tokens)
-        except Exception:
-            pass
+    if not first_name or not last_name:
+        return JSONResponse({"error": "Please enter your name."}, status_code=400)
 
-    lookup = await validate_and_lookup(address)
-    if not lookup.representatives:
-        return JSONResponse({"error": "No representatives found.", "details": lookup.errors}, status_code=400)
+    if not email:
+        return JSONResponse({"error": "Please enter your email address."}, status_code=400)
 
-    reps = lookup.representatives
-    if send_to == "house":
-        reps = [r for r in reps if r.chamber == "house"]
-    elif send_to == "senate":
-        reps = [r for r in reps if r.chamber == "senate"]
+    if not address or not address.strip():
+        return JSONResponse({"error": "Please enter your address."}, status_code=400)
 
-    addr = lookup.address
-    ctx = UserContext(
-        first_name=first_name or "Constituent",
-        last_name=last_name or "",
-        email=email or "",
-        address_street=addr.street or address,
-        address_city=addr.city,
-        address_state=addr.state,
-        address_zip5=addr.zip5,
-        address_zip4=addr.zip4,
-        topic=topic,
-        subject=f"Constituent message: {topic}",
-        message=message,
+    # Validate address
+    result = await validate_and_resolve(address)
+    if result.errors:
+        return JSONResponse({"error": "; ".join(result.errors)}, status_code=400)
+
+    # Get all officials
+    officials = get_officials_for_address(
+        council_district=result.council_district,
+        borough_code=result.borough_code,
+        state_senate_district=result.state_senate_district,
+        state_assembly_district=result.state_assembly_district,
     )
 
-    submitter = await get_submitter()
-    results = []
+    if not officials:
+        return JSONResponse({"error": "No officials found for this address."}, status_code=400)
 
-    for rep in reps:
-        form_def = load_form(rep.bioguide)
-        rep_result = {
-            "bioguide": rep.bioguide,
-            "name": rep.name,
-            "chamber": rep.chamber,
-            "state": rep.state,
-            "status": "skipped",
-            "error": "",
-        }
+    # Deliver to each official
+    email_sender = get_email_sender()
+    delivery_results = []
 
-        if not form_def:
-            rep_result["status"] = "no_form"
-            rep_result["error"] = "No form definition available"
-        else:
-            issues = validate_form(form_def)
-            if issues:
-                rep_result["status"] = "skipped"
-                rep_result["error"] = f"Form issues: {'; '.join(issues)}"
+    for official in officials:
+        start_time = time.monotonic()
+
+        try:
+            if official.contact_method == "email":
+                # Email delivery
+                addr = result.address
+                email_result = await email_sender.send_email(
+                    to_email=official.email,
+                    official_title=official.title,
+                    official_name=official.name,
+                    first_name=first_name,
+                    last_name=last_name,
+                    address_street=addr.street or addr.standardized,
+                    address_city=addr.city,
+                    address_state=addr.state,
+                    address_zip=addr.zip5,
+                    user_email=email,
+                    topic=topic,
+                    message=message,
+                    subject_override=subject or "",
+                )
+
+                duration = time.monotonic() - start_time
+                delivery_results.append({
+                    "title": official.title,
+                    "name": official.name,
+                    "contact_method": "email",
+                    "status": "sent" if email_result.success else "failed",
+                    "detail": email_result.message,
+                    "error": email_result.error,
+                    "duration": round(duration, 1),
+                    "email_sent_to": official.email if email_result.success else "",
+                    "phone": official.phone,
+                })
+
+            elif official.contact_method == "form" and official.form_key:
+                # Form-based delivery — attempt Playwright submission
+                # For now, fall back to email if email is available, or mark as needs_manual
+                if official.email:
+                    addr = result.address
+                    email_result = await email_sender.send_email(
+                        to_email=official.email,
+                        official_title=official.title,
+                        official_name=official.name,
+                        first_name=first_name,
+                        last_name=last_name,
+                        address_street=addr.street or addr.standardized,
+                        address_city=addr.city,
+                        address_state=addr.state,
+                        address_zip=addr.zip5,
+                        user_email=email,
+                        topic=topic,
+                        message=message,
+                        subject_override=subject or "",
+                    )
+                    duration = time.monotonic() - start_time
+                    delivery_results.append({
+                        "title": official.title,
+                        "name": official.name,
+                        "contact_method": "email_fallback",
+                        "status": "sent" if email_result.success else "failed",
+                        "detail": f"Form ({official.form_key}) not yet automated; sent via email fallback." if email_result.success else email_result.message,
+                        "error": email_result.error,
+                        "duration": round(duration, 1),
+                        "email_sent_to": official.email if email_result.success else "",
+                        "phone": official.phone,
+                    })
+                else:
+                    duration = time.monotonic() - start_time
+                    delivery_results.append({
+                        "title": official.title,
+                        "name": official.name,
+                        "contact_method": "form",
+                        "status": "manual_redirect",
+                        "detail": f"Please contact this official via their website form.",
+                        "url": official.url,
+                        "duration": round(duration, 1),
+                        "phone": official.phone,
+                    })
+
             else:
-                captcha = _detect_captcha(rep.bioguide)
-                if captcha["needed"] and captcha["sitekey"]:
-                    token = tokens.get(captcha["sitekey"], "")
-                    if not token:
-                        rep_result["status"] = "captcha_needed"
-                        rep_result["error"] = f"Requires verification"
-                        results.append(rep_result)
-                        continue
+                duration = time.monotonic() - start_time
+                delivery_results.append({
+                    "title": official.title,
+                    "name": official.name,
+                    "contact_method": "unknown",
+                    "status": "skipped",
+                    "detail": "No contact method available.",
+                    "duration": round(duration, 1),
+                    "phone": official.phone,
+                })
 
-                submission = await submitter.submit(form_def, ctx)
-                rep_result["status"] = "delivered" if submission.success else "failed"
-                rep_result["error"] = submission.error or ""
+        except Exception as e:
+            duration = time.monotonic() - start_time
+            delivery_results.append({
+                "title": official.title,
+                "name": official.name,
+                "contact_method": official.contact_method,
+                "status": "failed",
+                "detail": str(e),
+                "error": traceback.format_exc()[:500],
+                "duration": round(duration, 1),
+                "phone": official.phone,
+            })
 
-        results.append(rep_result)
+    # Summary
+    sent = sum(1 for r in delivery_results if r["status"] == "sent")
+    failed = sum(1 for r in delivery_results if r["status"] == "failed")
+    manual = sum(1 for r in delivery_results if r["status"] == "manual_redirect")
+    skipped = sum(1 for r in delivery_results if r["status"] == "skipped")
 
     return JSONResponse({
-        "address": addr.standardized or address,
-        "representatives": results,
-        "warnings": lookup.errors,
+        "address": result.address.standardized,
+        "borough": result.borough_code.replace("_", " ").title() if result.borough_code else "",
+        "officials": delivery_results,
+        "summary": {
+            "total": len(delivery_results),
+            "sent": sent,
+            "failed": failed,
+            "manual_redirect": manual,
+            "skipped": skipped,
+        },
     })
-
-
-def _detect_captcha(bioguide: str) -> dict:
-    form = load_form(bioguide)
-    if not form:
-        return {"type": "unknown", "sitekey": "", "needed": False}
-
-    KNOWN_SITEKEYS = {
-        "6Le2KP8SAAAAAA38fpHcO6WgjGaZZrtSNyxfzxkm": "recaptcha_v2",
-        "48c6c3f2-b426-4532-bf4e-de4207b26d72": "hcaptcha",
-    }
-
-    raw_str = str(form.raw_yaml)
-    for sitekey, captcha_type in KNOWN_SITEKEYS.items():
-        if sitekey in raw_str:
-            return {"type": captcha_type, "sitekey": sitekey, "needed": True}
-
-    if any(s.step_type == "recaptcha" for s in form.steps):
-        return {"type": "recaptcha_v2", "sitekey": "", "needed": True}
-
-    if form.captcha_type:
-        return {"type": form.captcha_type, "sitekey": form.captcha_sitekey, "needed": True}
-
-    return {"type": "none", "sitekey": "", "needed": False}

@@ -1,0 +1,76 @@
+# NYC Comptroller — WordPress contact form
+# URL: https://comptroller.nyc.gov/about/contact-our-office/
+# reCAPTCHA v2 + honeypot, ~20 fields
+bioguide: nyc_comptroller
+contact_form:
+  method: POST
+  action: ""
+  steps:
+    - visit: "https://comptroller.nyc.gov/about/contact-our-office/"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='first_name'], #first-name"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='last_name'], #last-name"
+          value: "$NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[type='email']"
+          value: "$EMAIL"
+          required: true
+        - name: phone
+          selector: "input[name='phone'], input[type='tel']"
+          value: "$PHONE"
+          required: false
+        - name: address
+          selector: "input[name='address'], #address"
+          value: "$ADDRESS_STREET"
+          required: false
+        - name: city
+          selector: "input[name='city'], #city"
+          value: "$ADDRESS_CITY"
+          required: true
+        - name: zip
+          selector: "input[name='zip_code'], #zip-code, input[name='zip']"
+          value: "$ADDRESS_ZIP5"
+          required: true
+        - name: message
+          selector: "textarea[name='message'], textarea[name='your_message'], #message"
+          value: "$MESSAGE"
+          required: true
+          options:
+            max_length: 250
+        - name: subject
+          selector: "input[name='subject'], #subject"
+          value: "$SUBJECT"
+          required: false
+    - select:
+        - name: message_type
+          selector: "select[name='message_type'], #message-type"
+          value: "$TOPIC"
+          required: true
+          options:
+            Budget: "Budget"
+            Pensions: "Pensions"
+            Audit: "Audit"
+            Contracts: "Contracts"
+            Prevailing Wage: "Prevailing Wage"
+            Other: "Other"
+        - name: state
+          selector: "select[name='state'], #state"
+          value: "$ADDRESS_STATE_POSTAL_ABBREV"
+          required: true
+    - recaptcha:
+        - value: true
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit'], .gform_button"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

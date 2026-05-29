@@ -1,8 +1,8 @@
 /**
- * Civic Bridge — 3-page flow
- * Page 1: Message + Name + Email
- * Page 2: Address + Confirm + Send
- * Page 3: Results + Call follow-up
+ * NYC Bridge — 3-page flow
+ * Page 1: Message + Name + Email + Topic
+ * Page 2: Address + Confirm officials + Send
+ * Page 3: Delivery results
  */
 (function() {
     'use strict';
@@ -14,26 +14,25 @@
     const pageAddress = $('page-address');
     const pageResults = $('page-results');
 
-    // Page 1: Message
+    // Page 1
     const messageEl = $('message');
     const charCount = $('char-count');
     const btnToAddress = $('btn-to-address');
 
-    // Page 2: Address
+    // Page 2
     const addressInput = $('address');
     const autocompleteList = $('autocomplete-list');
     const confirmArea = $('confirm-area');
     const confirmReps = $('confirm-reps');
-    const captchaArea = $('captcha-area');
-    const captchaContainer = $('captcha-container');
-    const callSection = $('call-section');
+    const callArea = $('call-area');
     const callScript = $('call-script');
     const addressForm = $('address-form');
     const btnSend = $('btn-send');
     const btnAddrBack = $('btn-addr-back');
 
-    // Page 3: Results
+    // Page 3
     const resultTitle = $('result-title');
+    const resultSummary = $('result-summary');
     const resultList = $('result-list');
     const resultWarnings = $('result-warnings');
     const resultCall = $('result-call');
@@ -41,10 +40,8 @@
 
     // State
     let previewData = null;
-    let captchaTokens = {};
-    let captchaWidgets = {};
     let autocompleteTimer = null;
-    let callScriptData = null;
+    let callScriptData = [];
 
     // ---- Character counter ----
     messageEl.addEventListener('input', function() {
@@ -53,17 +50,6 @@
         charCount.style.color = len > 4500 ? 'var(--red-light)' : len > 4000 ? '#eab308' : '';
     });
 
-    var sendTo = 'all';
-
-    // ---- Send-to button toggle ----
-    var toggles = document.querySelectorAll('.btn-toggle');
-    toggles.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            toggles.forEach(function(b) { b.classList.remove('active'); });
-            this.classList.add('active');
-            sendTo = this.getAttribute('data-value');
-        });
-    });
     function goTo(from, to) {
         from.style.display = 'none';
         to.style.display = '';
@@ -116,7 +102,7 @@
                     return;
                 }
                 autocompleteList.innerHTML = suggestions.map(function(s) {
-                    return '<div class="autocomplete-item" role="option">' + escHtml(s) + '</div>';
+                    return '<div class="autocomplete-item" role="option">' + escHtml(s.address || s) + '</div>';
                 }).join('');
                 autocompleteList.style.display = '';
                 autocompleteList.querySelectorAll('.autocomplete-item').forEach(function(item) {
@@ -137,7 +123,7 @@
         if (!addr) { shake(addressInput); return; }
 
         btnSend.disabled = true;
-        btnSend.querySelector('.btn-label').textContent = 'Sending...';
+        btnSend.querySelector('.btn-label').textContent = 'Looking up...';
         btnSend.classList.add('is-sending');
 
         var fd = new FormData();
@@ -147,7 +133,6 @@
         fd.append('last_name', $('last_name').value.trim());
         fd.append('email', $('email').value.trim());
         fd.append('topic', $('topic').value);
-        fd.append('send_to', sendTo);
 
         fetch('/api/preview', { method: 'POST', body: fd })
             .then(function(r) { return r.json(); })
@@ -157,11 +142,7 @@
                     btnSend.querySelector('.btn-label').textContent = 'Send my message';
                     btnSend.classList.remove('is-sending');
                     addressInput.style.borderColor = 'var(--red)';
-                    var msg = data.error;
-                    if (data.details && data.details.length) {
-                        msg += '\n\n' + data.details.join('\n');
-                    }
-                    alert(msg);
+                    alert(data.error);
                     setTimeout(function() { addressInput.style.borderColor = ''; }, 2000);
                     return;
                 }
@@ -169,6 +150,10 @@
                 renderConfirm(data);
                 confirmArea.style.display = '';
                 confirmArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                btnSend.querySelector('.btn-label').textContent = 'Confirm & send';
+                btnSend.disabled = false;
+                btnSend.classList.remove('is-sending');
+                btnSend.setAttribute('data-mode', 'confirm');
             })
             .catch(function() {
                 btnSend.disabled = false;
@@ -178,14 +163,47 @@
             });
     });
 
+    // Group officials by jurisdiction for display
+    function groupOfficials(officials) {
+        var groups = {
+            'citywide': { label: 'Citywide Officials', officials: [] },
+            'district': { label: 'Your District Representatives', officials: [] },
+            'borough': { label: 'Your Borough Officials', officials: [] },
+            'statewide': { label: 'New York State Officials', officials: [] },
+        };
+        officials.forEach(function(o) {
+            var key = o.jurisdiction || 'district';
+            if (groups[key]) {
+                groups[key].officials.push(o);
+            } else {
+                // State legislative districts fall under 'district'
+                if (!groups['district']) groups['district'] = { label: 'Your District Representatives', officials: [] };
+                groups['district'].officials.push(o);
+            }
+        });
+        return Object.values(groups).filter(function(g) { return g.officials.length > 0; });
+    }
+
     function renderConfirm(data) {
-        var reps = data.representatives || [];
-        confirmReps.innerHTML = reps.map(function(r) {
-            return '<div class="confirm-rep">' +
-                '<span class="confirm-chamber ' + (r.chamber === 'senate' ? 'chamber-senate' : 'chamber-house') + '">' + (r.chamber === 'senate' ? 'Senate' : 'House') + '</span>' +
-                '<strong>' + escHtml(r.name) + '</strong>' +
-                '<span class="confirm-state">' + r.state + (r.party ? ' \u00b7 ' + r.party : '') + '</span>' +
-                '</div>';
+        var officials = data.officials || [];
+        var groups = groupOfficials(officials);
+
+        confirmReps.innerHTML = groups.map(function(group) {
+            var cards = group.officials.map(function(o) {
+                var badge = o.contact_method === 'email'
+                    ? '<span class="confirm-chamber chamber-email">Email</span>'
+                    : '<span class="confirm-chamber chamber-form">Web Form</span>';
+                var phone = o.phone ? ' <span class="confirm-phone">📞 ' + escHtml(o.phone) + '</span>' : '';
+                return '<div class="confirm-rep">' +
+                    badge +
+                    '<div><strong>' + escHtml(o.title) + '</strong></div>' +
+                    '<div class="confirm-name">' + escHtml(o.name) +
+                    (o.party ? ' <span class="confirm-party">(' + o.party + ')</span>' : '') +
+                    phone + '</div>' +
+                    (o.note ? '<div class="confirm-note" style="font-size:0.8rem;color:var(--white-muted);margin-top:0.25rem;">' + escHtml(o.note) + '</div>' : '') +
+                    '</div>';
+            }).join('');
+            return '<div class="official-group"><h3 class="group-label">' + group.label + '</h3>' + cards + '</div>';
         }).join('');
 
         // Build call script
@@ -195,74 +213,24 @@
             var last = parts[parts.length - 1].trim().split(' ');
             zip = last[last.length - 1] || '';
         }
-        callScriptData = reps.map(function(r) {
-            return { name: r.name, phone: r.phone || 'See website' };
+        callScriptData = officials.filter(function(o) { return o.phone; }).map(function(o) {
+            return { name: o.name + ' (' + o.title + ')', phone: o.phone };
         });
-        callScript.innerHTML =
-            '<div class="call-script-intro"><p>A phone call takes 2 minutes and is the most effective way to be heard:</p></div>' +
-            '<div class="call-script-text"><p>"Hello, my name is <strong>' + escHtml($('first_name').value || '___') + ' ' + escHtml($('last_name').value || '___') + '</strong>. I am a constituent from ZIP code <strong>' + zip + '</strong>. I submitted a comment about <strong>' + escHtml($('topic').value) + '</strong> and wanted to follow up. Please ensure my position is registered with the ' + (reps[0] && reps[0].chamber === 'senate' ? 'Senator' : 'Representative') + '."</p></div>' +
-            '<div class="call-numbers">' + callScriptData.map(function(r) { return '<p><strong>' + escHtml(r.name) + ':</strong> ' + escHtml(r.phone) + '</p>'; }).join('') + '</div>';
-        callSection.style.display = '';
 
-        // Captcha
-        var needed = data.captchas_needed || [];
-        if (needed.length > 0) {
-            captchaArea.style.display = '';
-            captchaContainer.innerHTML = '';
-            captchaTokens = {};
-            captchaWidgets = {};
-            needed.forEach(function(c, i) {
-                var div = document.createElement('div');
-                div.className = 'captcha-widget';
-                div.innerHTML = '<p class="captcha-label">For: ' + c.representatives.join(', ') + '</p><div class="captcha-render" id="captcha-render-' + i + '"></div>';
-                captchaContainer.appendChild(div);
-                setTimeout(function() { renderCaptchaWidget(i, c); }, 150);
-            });
+        if (callScriptData.length > 0) {
+            callScript.innerHTML =
+                '<p class="call-script-intro">A phone call is the most effective way to follow up:</p>' +
+                '<div class="call-script-text"><p>"Hello, my name is <strong>' + escHtml($('first_name').value || '___') + ' ' + escHtml($('last_name').value || '___') + '</strong>. I am a constituent from ZIP code <strong>' + zip + '</strong>. I submitted a message about <strong>' + escHtml($('topic').value) + '</strong> and wanted to follow up. Please ensure my position is registered."</p></div>' +
+                '<div class="call-numbers">' + callScriptData.map(function(r) { return '<p><strong>' + escHtml(r.name) + ':</strong> ' + escHtml(r.phone) + '</p>'; }).join('') + '</div>';
+            callArea.style.display = '';
         } else {
-            captchaArea.style.display = 'none';
-        }
-
-        // Change button to confirm mode
-        btnSend.querySelector('.btn-label').textContent = 'Confirm & send';
-        btnSend.disabled = false;
-        btnSend.classList.remove('is-sending');
-        btnSend.setAttribute('data-mode', 'confirm');
-    }
-
-    function renderCaptchaWidget(index, captcha) {
-        var el = document.getElementById('captcha-render-' + index);
-        if (!el) return;
-        var cbName = 'ccb_' + index + '_' + Date.now();
-        window[cbName] = function(token) {
-            captchaTokens[captcha.sitekey] = token;
-            var widget = el.closest('.captcha-widget');
-            if (widget) widget.style.opacity = '0.5';
-        };
-        try {
-            if (captcha.type === 'recaptcha_v2') {
-                captchaWidgets[captcha.sitekey] = grecaptcha.render('captcha-render-' + index, { sitekey: captcha.sitekey, callback: cbName, theme: 'dark' });
-            } else if (captcha.type === 'hcaptcha') {
-                captchaWidgets[captcha.sitekey] = hcaptcha.render('captcha-render-' + index, { sitekey: captcha.sitekey, callback: cbName, theme: 'dark' });
-            } else if (captcha.type === 'turnstile') {
-                captchaWidgets[captcha.sitekey] = turnstile.render('captcha-render-' + index, { sitekey: captcha.sitekey, callback: cbName, theme: 'dark' });
-            } else {
-                captchaTokens[captcha.sitekey] = 'bypass';
-            }
-        } catch (err) {
-            captchaTokens[captcha.sitekey] = 'fallback';
+            callArea.style.display = 'none';
         }
     }
 
-    // ---- Confirm → Actual send ----
+    // ---- Confirm → Send ----
     btnSend.addEventListener('click', function() {
-        if (btnSend.getAttribute('data-mode') !== 'confirm') return; // Only in confirm mode
-
-        var needed = previewData ? (previewData.captchas_needed || []) : [];
-        var unsolved = needed.filter(function(c) { return !captchaTokens[c.sitekey]; });
-        if (unsolved.length > 0) {
-            alert('Please complete all verifications before sending.');
-            return;
-        }
+        if (btnSend.getAttribute('data-mode') !== 'confirm') return;
 
         btnSend.disabled = true;
         btnSend.querySelector('.btn-label').textContent = 'Sending...';
@@ -275,8 +243,6 @@
         fd.append('last_name', $('last_name').value.trim());
         fd.append('email', $('email').value.trim());
         fd.append('topic', $('topic').value);
-        fd.append('send_to', sendTo);
-        fd.append('captcha_tokens', JSON.stringify(captchaTokens));
 
         fetch('/api/send', { method: 'POST', body: fd })
             .then(function(r) { return r.json(); })
@@ -285,7 +251,7 @@
                 goTo(pageAddress, pageResults);
             })
             .catch(function() {
-                alert('Connection error.');
+                alert('Connection error. Please try again.');
                 btnSend.disabled = false;
                 btnSend.querySelector('.btn-label').textContent = 'Confirm & send';
                 btnSend.classList.remove('is-sending');
@@ -298,31 +264,47 @@
 
     // ---- Results ----
     function renderResults(data) {
-        var reps = data.representatives || [];
-        var delivered = reps.filter(function(r) { return r.status === 'delivered'; }).length;
-        var total = reps.length;
+        var officials = data.officials || [];
+        var summary = data.summary || {};
+        var sent = summary.sent || 0;
+        var total = summary.total || officials.length;
+        var failed = summary.failed || 0;
+        var manual = summary.manual_redirect || 0;
 
-        if (delivered === total) {
-            resultTitle.textContent = 'Sent to ' + total + ' representative' + (total !== 1 ? 's' : '') + '!';
-        } else if (delivered > 0) {
-            resultTitle.textContent = 'Sent to ' + delivered + ' of ' + total + ' representatives';
-        } else {
+        if (sent === total) {
+            resultTitle.textContent = 'Message sent to all ' + total + ' officials!';
+        } else if (sent > 0) {
+            resultTitle.textContent = 'Sent to ' + sent + ' of ' + total + ' officials';
+        } else if (failed > 0) {
             resultTitle.textContent = 'Delivery could not be completed';
+        } else {
+            resultTitle.textContent = 'Delivery results';
         }
 
-        var icons = { delivered: '\u2713', failed: '\u2717', skipped: '\u2298', no_form: '?', captcha_needed: '\uD83D\uDD12' };
-        resultList.innerHTML = reps.map(function(r) {
-            var cl = r.chamber === 'senate' ? 'chamber-senate' : 'chamber-house';
-            var lb = r.chamber === 'senate' ? 'Senate' : 'House';
+        var summaryParts = [];
+        if (sent > 0) summaryParts.push(sent + ' sent');
+        if (failed > 0) summaryParts.push(failed + ' failed');
+        if (manual > 0) summaryParts.push(manual + ' need manual follow-up');
+        resultSummary.innerHTML = summaryParts.length > 0
+            ? '<p class="result-summary-text">' + summaryParts.join(' · ') + '</p>'
+            : '';
+
+        var icons = { sent: '✓', delivered: '✓', failed: '✗', skipped: '⊘', manual_redirect: '🔗' };
+
+        resultList.innerHTML = officials.map(function(r) {
             return '<div class="result-item">' +
                 '<div class="result-icon ' + r.status + '">' + (icons[r.status] || '?') + '</div>' +
-                '<div class="result-body"><div class="result-name">' + escHtml(r.name) + '</div>' +
-                '<div class="result-detail">' + escHtml(r.error || (r.status === 'delivered' ? 'Message sent' : '')) + '</div></div>' +
-                '<span class="result-chamber ' + cl + '">' + lb + '</span></div>';
+                '<div class="result-body">' +
+                '<div class="result-name">' + escHtml(r.title) + ' — ' + escHtml(r.name) + '</div>' +
+                '<div class="result-detail">' + escHtml(r.detail || r.error || '') + '</div>' +
+                (r.email_sent_to ? '<div class="result-email-sent" style="font-size:0.75rem;color:var(--white-muted);">To: ' + escHtml(r.email_sent_to) + '</div>' : '') +
+                '</div>' +
+                '<span class="result-method">' + (r.contact_method === 'email' ? 'email' : r.contact_method === 'form' ? 'form' : r.contact_method === 'email_fallback' ? 'email' : '') + '</span>' +
+                '</div>';
         }).join('');
 
         // Call follow-up
-        if (callScriptData) {
+        if (callScriptData.length > 0) {
             resultCall.style.display = '';
             var zip = '';
             if (data.address) {
@@ -332,13 +314,13 @@
             }
             resultCall.innerHTML =
                 '<div class="section-divider"><span>Follow up by phone</span></div>' +
-                '<p class="card-desc" style="margin:0.5rem 0;">A phone call takes 2 minutes and is the most effective way to be heard.</p>' +
-                '<div class="call-script-text"><p>"Hello, my name is <strong>' + escHtml($('first_name').value || '___') + ' ' + escHtml($('last_name').value || '___') + '</strong>. I am a constituent from ZIP code <strong>' + zip + '</strong>. I submitted a comment and wanted to follow up. Please ensure my position is registered."</p></div>' +
+                '<p class="card-desc" style="margin:0.5rem 0;">A phone call is the most effective way to follow up.</p>' +
+                '<div class="call-script-text"><p>"Hello, my name is <strong>' + escHtml($('first_name').value || '___') + ' ' + escHtml($('last_name').value || '___') + '</strong>. I am a constituent from ZIP code <strong>' + zip + '</strong>. I submitted a message about <strong>' + escHtml($('topic').value) + '</strong> and wanted to follow up."</p></div>' +
                 '<div class="call-numbers" style="margin-top:0.5rem;">' + callScriptData.map(function(r) { return '<p><strong>' + escHtml(r.name) + ':</strong> ' + escHtml(r.phone) + '</p>'; }).join('') + '</div>';
         }
 
-        if (data.warnings && data.warnings.length) {
-            resultWarnings.innerHTML = data.warnings.map(function(w) { return '<p>' + escHtml(w) + '</p>'; }).join('');
+        if (data.error) {
+            resultWarnings.innerHTML = '<p style="color:var(--red-light);">' + escHtml(data.error) + '</p>';
         }
 
         btnNewMessage.style.display = 'inline-flex';
@@ -348,14 +330,11 @@
         [pageResults, pageAddress].forEach(function(s) { s.style.display = 'none'; });
         pageMessage.style.display = '';
         confirmArea.style.display = 'none';
-        captchaArea.style.display = 'none';
-        callSection.style.display = 'none';
+        callArea.style.display = 'none';
         autocompleteList.innerHTML = '';
         autocompleteList.style.display = 'none';
-        captchaTokens = {};
-        captchaWidgets = {};
         previewData = null;
-        callScriptData = null;
+        callScriptData = [];
         btnSend.querySelector('.btn-label').textContent = 'Send my message';
         btnSend.disabled = false;
         btnSend.classList.remove('is-sending');

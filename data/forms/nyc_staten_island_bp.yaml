@@ -1,0 +1,56 @@
+# Staten Island Borough President — Weebly contact form
+# URL: https://www.statenislandusa.com/contact.html
+# Simple Weebly form, no CAPTCHA visible
+bioguide: nyc_staten_island_bp
+contact_form:
+  method: POST
+  action: "/ajax/contact-form"
+  steps:
+    - visit: "https://www.statenislandusa.com/contact.html"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='first'], input[name='first_name'], #first-name"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='last'], input[name='last_name'], #last-name"
+          value: "$NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[type='email']"
+          value: "$EMAIL"
+          required: true
+        - name: phone
+          selector: "input[name='phone'], input[type='tel']"
+          value: "$PHONE"
+          required: false
+        - name: address1
+          selector: "input[name='address1'], #address1"
+          value: "$ADDRESS_STREET"
+          required: false
+        - name: city
+          selector: "input[name='city']"
+          value: "$ADDRESS_CITY"
+          required: false
+        - name: state
+          selector: "input[name='state'], select[name='state']"
+          value: "$ADDRESS_STATE_POSTAL_ABBREV"
+          required: false
+        - name: zip
+          selector: "input[name='zip']"
+          value: "$ADDRESS_ZIP5"
+          required: false
+        - name: comment
+          selector: "textarea[name='comment'], textarea[name='message']"
+          value: "$MESSAGE"
+          required: true
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit'], button:has-text('Submit')"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

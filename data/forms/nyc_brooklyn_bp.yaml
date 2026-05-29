@@ -1,0 +1,23 @@
+# Brooklyn Borough President — Microsoft Forms
+# URL: https://www.brooklynbp.nyc.gov/contact/
+# Microsoft Forms blocks automated submission (MS Defender for Office 365).
+# This is a MANUAL REDIRECT — user must visit the page and fill the form themselves.
+bioguide: nyc_brooklyn_bp
+contact_form:
+  method: GET
+  action: "https://www.brooklynbp.nyc.gov/contact/"
+  steps:
+    - visit: "https://www.brooklynbp.nyc.gov/contact/"
+    - wait:
+        - value: 1
+    - click_on:
+        - value: "Contact Us"
+          selector: "a[href*='forms.office.com'], a:has-text('Meet with Team'), a:has-text('Invite BP')"
+  success:
+    body:
+      contains: "office.com"
+  note: >
+    Brooklyn BP uses Microsoft Forms which actively blocks automated form submission.
+    This YAML redirects the user to the contact page where they can manually access
+    the appropriate MS Form. As a fallback, the system provides the BP's phone number
+    and email for direct contact.

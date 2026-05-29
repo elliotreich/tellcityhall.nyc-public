@@ -1,0 +1,870 @@
+# NYC Bridge — Master roster of all elected officials representing NYC residents
+# Updated: 2026-05-29
+#
+# Structure:
+#   citywide: Mayor, Public Advocate, Comptroller
+#   council: 51 City Council districts
+#   boroughs: 5 boroughs, each with Borough President + District Attorney
+#   state_wide: Governor, NYS AG, NYS Comptroller
+#   state_senate: NYS Senate districts (63 total, ~26 cover NYC)
+#   state_assembly: NYS Assembly districts (150 total, ~65 cover NYC)
+
+citywide:
+  - title: "Mayor of New York City"
+    name: "Zohran Mamdani"
+    party: Democrat
+    contact_method: form
+    form_key: nyc_mayor
+    url: "https://www.nyc.gov/office-of-the-mayor/contact.page"
+    phone: "311"
+    jurisdiction: citywide
+
+  - title: "Public Advocate"
+    name: "Jumaane Williams"
+    party: Democrat
+    contact_method: form
+    form_key: nyc_public_advocate
+    url: "https://advocate.nyc.gov/intake"
+    phone: "212-669-7250"
+    email: "gethelp@advocate.nyc.gov"
+    jurisdiction: citywide
+
+  - title: "Comptroller"
+    name: "Mark Levine"
+    party: Democrat
+    contact_method: form
+    form_key: nyc_comptroller
+    url: "https://comptroller.nyc.gov/about/contact-our-office/"
+    phone: "212-669-3916"
+    email: "action@comptroller.nyc.gov"
+    jurisdiction: citywide
+
+council:
+  1:
+    name: "Christopher Marte"
+    party: Democrat
+    borough: Manhattan
+    email: "District1@council.nyc.gov"
+    phone: "212-587-3159"
+    contact_method: email
+  2:
+    name: "Harvey D. Epstein"
+    party: Democrat
+    borough: Manhattan
+    email: "District2@council.nyc.gov"
+    contact_method: email
+  3:
+    name: "Erik D. Bottcher"
+    party: Democrat
+    borough: Manhattan
+    email: "District3@council.nyc.gov"
+    contact_method: email
+    note: "Term ended Feb 2026; special election won by Carl Wilson (R)"
+  4:
+    name: "Virginia Maloney"
+    party: Democrat
+    borough: Manhattan
+    email: "District4@council.nyc.gov"
+    contact_method: email
+  5:
+    name: "Julie Menin"
+    party: Democrat
+    borough: Manhattan
+    email: "SpeakerMenin@council.nyc.gov"
+    phone: "212-860-1950"
+    contact_method: email
+    note: "Speaker of the City Council"
+  6:
+    name: "Gale A. Brewer"
+    party: Democrat
+    borough: Manhattan
+    email: "District6@council.nyc.gov"
+    contact_method: email
+  7:
+    name: "Shaun Abreu"
+    party: Democrat
+    borough: Manhattan
+    email: "District7@council.nyc.gov"
+    contact_method: email
+  8:
+    name: "Elsie Encarnación"
+    party: Democrat
+    borough: Manhattan
+    email: "District8@council.nyc.gov"
+    contact_method: email
+  9:
+    name: "Yusef Salaam"
+    party: Democrat
+    borough: Manhattan
+    email: "district9@council.nyc.gov"
+    contact_method: email
+  10:
+    name: "Carmen N. De La Rosa"
+    party: Democrat
+    borough: Manhattan
+    email: "District10@council.nyc.gov"
+    contact_method: email
+  11:
+    name: "Eric Dinowitz"
+    party: Democrat
+    borough: Bronx
+    email: "dinowitz@council.nyc.gov"
+    contact_method: email
+  12:
+    name: "Kevin C. Riley"
+    party: Democrat
+    borough: Bronx
+    email: "District12@council.nyc.gov"
+    contact_method: email
+  13:
+    name: "Shirley Aldebol"
+    party: Democrat
+    borough: Bronx
+    email: "District13@council.nyc.gov"
+    contact_method: email
+  14:
+    name: "Pierina Ana Sanchez"
+    party: Democrat
+    borough: Bronx
+    email: "District14@council.nyc.gov"
+    contact_method: email
+  15:
+    name: "Oswald J. Feliz"
+    party: Democrat
+    borough: Bronx
+    email: "District15@council.nyc.gov"
+    contact_method: email
+  16:
+    name: "Althea V. Stevens"
+    party: Democrat
+    borough: Bronx
+    email: "District16@council.nyc.gov"
+    contact_method: email
+  17:
+    name: "Justin E. Sanchez"
+    party: Democrat
+    borough: Bronx
+    email: "District17@council.nyc.gov"
+    contact_method: email
+  18:
+    name: "Amanda C. Farías"
+    party: Democrat
+    borough: Bronx
+    email: "District18@council.nyc.gov"
+    contact_method: email
+  19:
+    name: "Vickie Paladino"
+    party: Republican
+    borough: Queens
+    email: "District19@council.nyc.gov"
+    contact_method: email
+  20:
+    name: "Sandra Ung"
+    party: Democrat
+    borough: Queens
+    email: "district20@council.nyc.gov"
+    contact_method: email
+  21:
+    name: "Shanel Thomas-Henry"
+    party: Democrat
+    borough: Queens
+    email: "District21@council.nyc.gov"
+    contact_method: email
+  22:
+    name: "Tiffany L. Cabán"
+    party: Democrat
+    borough: Queens
+    email: "District22@council.nyc.gov"
+    phone: "718-274-4500"
+    contact_method: email
+  23:
+    name: "Linda Lee"
+    party: Democrat
+    borough: Queens
+    email: "District23@council.nyc.gov"
+    contact_method: email
+  24:
+    name: "James F. Gennaro"
+    party: Democrat
+    borough: Queens
+    email: "District24@council.nyc.gov"
+    contact_method: email
+  25:
+    name: "Shekar Krishnan"
+    party: Democrat
+    borough: Queens
+    email: "District25@council.nyc.gov"
+    phone: "718-803-6373"
+    contact_method: email
+  26:
+    name: "Julie Won"
+    party: Democrat
+    borough: Queens
+    email: "district26@council.nyc.gov"
+    contact_method: email
+  27:
+    name: "Nantasha M. Williams"
+    party: Democrat
+    borough: Queens
+    email: "District27@council.nyc.gov"
+    contact_method: email
+  28:
+    name: "Ty Hankerson"
+    party: Democrat
+    borough: Queens
+    email: "District28@council.nyc.gov"
+    contact_method: email
+  29:
+    name: "Lynn C. Schulman"
+    party: Democrat
+    borough: Queens
+    email: "District29@council.nyc.gov"
+    contact_method: email
+  30:
+    name: "Phil Wong"
+    party: Democrat
+    borough: Queens
+    email: "District30@council.nyc.gov"
+    contact_method: email
+  31:
+    name: "Selvena N. Brooks-Powers"
+    party: Democrat
+    borough: Queens
+    email: "District31@council.nyc.gov"
+    contact_method: email
+  32:
+    name: "Joann Ariola"
+    party: Republican
+    borough: Queens
+    email: "District32@council.nyc.gov"
+    contact_method: email
+  33:
+    name: "Lincoln Restler"
+    party: Democrat
+    borough: Brooklyn
+    email: "District33@council.nyc.gov"
+    phone: "718-875-5200"
+    contact_method: email
+  34:
+    name: "Jennifer Gutiérrez"
+    party: Democrat
+    borough: Brooklyn
+    email: "District34@council.nyc.gov"
+    contact_method: email
+  35:
+    name: "Crystal Hudson"
+    party: Democrat
+    borough: Brooklyn
+    email: "District35@council.nyc.gov"
+    contact_method: email
+  36:
+    name: "Chi A. Ossé"
+    party: Democrat
+    borough: Brooklyn
+    email: "District36@council.nyc.gov"
+    contact_method: email
+  37:
+    name: "Sandy Nurse"
+    party: Democrat
+    borough: Brooklyn
+    email: "District37@council.nyc.gov"
+    contact_method: email
+  38:
+    name: "Alexa Avilés"
+    party: Democrat
+    borough: Brooklyn
+    email: "District38@council.nyc.gov"
+    contact_method: email
+  39:
+    name: "Shahana K. Hanif"
+    party: Democrat
+    borough: Brooklyn
+    email: "District39@council.nyc.gov"
+    phone: "718-499-1090"
+    contact_method: email
+  40:
+    name: "Rita C. Joseph"
+    party: Democrat
+    borough: Brooklyn
+    email: "District40@council.nyc.gov"
+    contact_method: email
+  41:
+    name: "Darlene Mealy"
+    party: Democrat
+    borough: Brooklyn
+    email: "District41@council.nyc.gov"
+    contact_method: email
+  42:
+    name: "Chris Banks"
+    party: Democrat
+    borough: Brooklyn
+    email: "District42@council.nyc.gov"
+    contact_method: email
+  43:
+    name: "Susan Zhuang"
+    party: Democrat
+    borough: Brooklyn
+    email: "District43@council.nyc.gov"
+    contact_method: email
+  44:
+    name: "Simcha Felder"
+    party: Democrat
+    borough: Brooklyn
+    email: "AskSimcha@council.nyc.gov"
+    contact_method: email
+  45:
+    name: "Farah N. Louis"
+    party: Democrat
+    borough: Brooklyn
+    email: "District45@council.nyc.gov"
+    contact_method: email
+  46:
+    name: "Mercedes Narcisse"
+    party: Democrat
+    borough: Brooklyn
+    email: "District46@council.nyc.gov"
+    contact_method: email
+  47:
+    name: "Kayla Santosuosso"
+    party: Democrat
+    borough: Brooklyn
+    email: "heykayla@council.nyc.gov"
+    contact_method: email
+  48:
+    name: "Inna Vernikov"
+    party: Republican
+    borough: Brooklyn
+    email: "IVernikov@council.nyc.gov"
+    contact_method: email
+  49:
+    name: "Kamillah Hanks"
+    party: Democrat
+    borough: Staten Island
+    email: "District49@council.nyc.gov"
+    contact_method: email
+  50:
+    name: "David M. Carr"
+    party: Republican
+    borough: Staten Island
+    email: "DCarr@council.nyc.gov"
+    contact_method: email
+  51:
+    name: "Frank Morano"
+    party: Republican
+    borough: Staten Island
+    email: "Morano@council.nyc.gov"
+    contact_method: email
+
+boroughs:
+  manhattan:
+    name: "Manhattan"
+    county: "New York"
+    fips: "061"
+    borough_president:
+      name: "Brad Hoylman-Sigal"
+      party: Democrat
+      contact_method: email
+      email: "info@manhattanbp.nyc.gov"
+      phone: "212-669-8300"
+      url: "https://www.manhattanbp.nyc.gov/"
+    district_attorney:
+      name: "Alvin Bragg"
+      party: Democrat
+      contact_method: email
+      email: "DAManhattan@dany.nyc.gov"
+      phone: "212-335-9000"
+      url: "https://www.manhattanda.org/"
+
+  bronx:
+    name: "Bronx"
+    county: "Bronx"
+    fips: "005"
+    borough_president:
+      name: "Vanessa Gibson"
+      party: Democrat
+      contact_method: form
+      form_key: nyc_bronx_bp
+      url: "https://bronxboropres.nyc.gov/contact/"
+      phone: "718-590-3500"
+    district_attorney:
+      name: "Darcel Clark"
+      party: Democrat
+      contact_method: email
+      email: "info@bronxda.nyc.gov"
+      phone: "718-838-6060"
+      url: "https://www.bronxda.nyc.gov/"
+
+  brooklyn:
+    name: "Brooklyn"
+    county: "Kings"
+    fips: "047"
+    borough_president:
+      name: "Antonio Reynoso"
+      party: Democrat
+      contact_method: form
+      form_key: nyc_brooklyn_bp
+      url: "https://www.brooklynbp.nyc.gov/contact/"
+      phone: "718-802-3700"
+      note: "Uses Microsoft Forms — may require manual redirect"
+    district_attorney:
+      name: "Eric Gonzalez"
+      party: Democrat
+      contact_method: email
+      email: "EGonzalez@brooklynda.org"
+      phone: "718-250-2340"
+      url: "https://www.brooklynda.org/"
+
+  queens:
+    name: "Queens"
+    county: "Queens"
+    fips: "081"
+    borough_president:
+      name: "Donovan Richards"
+      party: Democrat
+      contact_method: email
+      email: "info@queensbp.nyc.gov"
+      phone: "718-286-3000"
+      url: "https://www.queensbp.nyc.gov/"
+    district_attorney:
+      name: "Melinda Katz"
+      party: Democrat
+      contact_method: email
+      email: "info@queensda.org"
+      phone: "718-286-6000"
+      url: "https://www.queensda.org/"
+
+  staten_island:
+    name: "Staten Island"
+    county: "Richmond"
+    fips: "085"
+    borough_president:
+      name: "Vito Fossella"
+      party: Republican
+      contact_method: form
+      form_key: nyc_staten_island_bp
+      url: "https://www.statenislandusa.com/contact.html"
+      phone: "718-816-2000"
+    district_attorney:
+      name: "Michael McMahon"
+      party: Democrat
+      contact_method: email
+      email: "info@rcda.nyc.gov"
+      phone: "718-876-6300"
+      url: "https://www.statenislandda.org/"
+
+state_wide:
+  - title: "Governor of New York"
+    name: "Kathy Hochul"
+    party: Democrat
+    contact_method: form
+    form_key: nys_governor
+    url: "https://www.governor.ny.gov/content/governor-contact-form"
+    phone: "518-474-8390"
+    jurisdiction: statewide
+
+  - title: "Attorney General of New York"
+    name: "Letitia James"
+    party: Democrat
+    contact_method: form
+    form_key: nys_ag
+    url: "https://ag.ny.gov/contact-ag"
+    phone: "1-800-771-7755"
+    jurisdiction: statewide
+
+  - title: "New York State Comptroller"
+    name: "Thomas DiNapoli"
+    party: Democrat
+    contact_method: email
+    email: "contactus@osc.ny.gov"
+    url: "https://www.osc.ny.gov/"
+    phone: "518-474-4044"
+    jurisdiction: statewide
+
+# NYS Senate districts covering NYC (~26 of 63 total)
+# District number → member info. Populated for NYC-relevant districts.
+# Members with nysenate.gov contact forms use the standardized Senate template.
+state_senate:
+  10:
+    name: "James Sanders Jr."
+    party: Democrat
+    counties: [Queens]
+    email: "sanders@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/james-sanders-jr/contact"
+  11:
+    name: "Toby Ann Stavisky"
+    party: Democrat
+    counties: [Queens]
+    email: "stavisky@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/toby-ann-stavisky/contact"
+  12:
+    name: "Michael Gianaris"
+    party: Democrat
+    counties: [Queens]
+    email: "gianaris@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/michael-gianaris/contact"
+  13:
+    name: "Jessica Ramos"
+    party: Democrat
+    counties: [Queens]
+    email: "ramos@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/jessica-ramos/contact"
+  14:
+    name: "Leroy Comrie"
+    party: Democrat
+    counties: [Queens]
+    email: "comrie@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/leroy-comrie/contact"
+  15:
+    name: "Joseph P. Addabbo Jr."
+    party: Democrat
+    counties: [Queens]
+    email: "addabbo@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/joseph-p-addabbo-jr/contact"
+  16:
+    name: "John Liu"
+    party: Democrat
+    counties: [Queens]
+    email: "liu@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/john-liu/contact"
+  17:
+    name: "Iwen Chu"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "chu@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/iwen-chu/contact"
+  18:
+    name: "Julia Salazar"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "salazar@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/julia-salazar/contact"
+  19:
+    name: "Roxanne J. Persaud"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "persaud@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/roxanne-j-persaud/contact"
+  20:
+    name: "Zellnor Myrie"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "myrie@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/zellnor-myrie/contact"
+  21:
+    name: "Kevin S. Parker"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "parker@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/kevin-s-parker/contact"
+  22:
+    name: "Simcha Felder"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "felder@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/simcha-felder/contact"
+  23:
+    name: "Jessica Scarcella-Spanton"
+    party: Democrat
+    counties: [Staten Island, Brooklyn]
+    email: "scarcellaspanton@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/jessica-scarcella-spanton/contact"
+  24:
+    name: "Andrew J. Lanza"
+    party: Republican
+    counties: [Staten Island]
+    email: "lanza@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/andrew-j-lanza/contact"
+  25:
+    name: "Jabari Brisport"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "brisport@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/jabari-brisport/contact"
+  26:
+    name: "Andrew Gounardes"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "gounardes@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/andrew-gounardes/contact"
+  27:
+    name: "Brian Kavanagh"
+    party: Democrat
+    counties: [Manhattan]
+    email: "kavanagh@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/brian-kavanagh/contact"
+  28:
+    name: "Liz Krueger"
+    party: Democrat
+    counties: [Manhattan]
+    email: "krueger@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/liz-krueger/contact"
+  29:
+    name: "Jose M. Serrano"
+    party: Democrat
+    counties: [Manhattan, Bronx]
+    email: "serrano@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/jose-m-serrano/contact"
+  30:
+    name: "Cordell Cleare"
+    party: Democrat
+    counties: [Manhattan]
+    email: "cleare@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/cordell-cleare/contact"
+  31:
+    name: "Robert Jackson"
+    party: Democrat
+    counties: [Manhattan]
+    email: "jackson@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/robert-jackson/contact"
+  32:
+    name: "Luis R. Sepulveda"
+    party: Democrat
+    counties: [Bronx]
+    email: "sepulveda@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/luis-r-sepulveda/contact"
+  33:
+    name: "Gustavo Rivera"
+    party: Democrat
+    counties: [Bronx]
+    email: "grivera@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/gustavo-rivera/contact"
+  34:
+    name: "Nathalia Fernandez"
+    party: Democrat
+    counties: [Bronx]
+    email: "fernandez@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/nathalia-fernandez/contact"
+  36:
+    name: "Jamaal T. Bailey"
+    party: Democrat
+    counties: [Bronx]
+    email: "bailey@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/jamaal-t-bailey/contact"
+  59:
+    name: "Kristen Gonzalez"
+    party: Democrat
+    counties: [Queens, Manhattan, Brooklyn]
+    email: "gonzalez@nysenate.gov"
+    url: "https://www.nysenate.gov/senators/kristen-gonzalez/contact"
+
+# NYS Assembly districts covering NYC (~65 of 150 total)
+# District number → member info. Populated for key NYC districts.
+# Members with nyassembly.gov contact forms use the standardized Assembly template.
+state_assembly:
+  34:
+    name: "Jessica Gonzalez-Rojas"
+    party: Democrat
+    counties: [Queens]
+    email: "gonzalezrojasj@nyassembly.gov"
+  35:
+    name: "Larinda Hooks"
+    party: Democrat
+    counties: [Queens]
+    email: "hooksl@nyassembly.gov"
+  36:
+    name: "Zohran Mamdani"
+    party: Democrat
+    counties: [Queens]
+    email: "mamdaniz@nyassembly.gov"
+    note: "Now Mayor; seat may be vacant or filled by special election"
+  37:
+    name: "Juan Ardila"
+    party: Democrat
+    counties: [Queens]
+    email: "ardilaj@nyassembly.gov"
+  38:
+    name: "Jenifer Rajkumar"
+    party: Democrat
+    counties: [Queens]
+    email: "rajkumarj@nyassembly.gov"
+  39:
+    name: "Catalina Cruz"
+    party: Democrat
+    counties: [Queens]
+    email: "cruzc@nyassembly.gov"
+  40:
+    name: "Ron Kim"
+    party: Democrat
+    counties: [Queens]
+    email: "kimr@nyassembly.gov"
+  50:
+    name: "Emily Gallagher"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "gallaghere@nyassembly.gov"
+  51:
+    name: "Marcela Mitaynes"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "mitaynesm@nyassembly.gov"
+  52:
+    name: "Jo Anne Simon"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "simonj@nyassembly.gov"
+  53:
+    name: "Maritza Davila"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "davilam@nyassembly.gov"
+  54:
+    name: "Erik E. Dilan"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "dilane@nyassembly.gov"
+  55:
+    name: "Latrice Walker"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "walkerl@nyassembly.gov"
+  56:
+    name: "Stefani Zinerman"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "zinermans@nyassembly.gov"
+  57:
+    name: "Phara Souffrant Forrest"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "forrestp@nyassembly.gov"
+  58:
+    name: "Monique Chandler-Waterman"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "chandlerwatermanm@nyassembly.gov"
+  59:
+    name: "Jaime Williams"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "williamsj@nyassembly.gov"
+  60:
+    name: "Nikki Lucas"
+    party: Democrat
+    counties: [Brooklyn]
+    email: "lucasn@nyassembly.gov"
+  61:
+    name: "Charles Fall"
+    party: Democrat
+    counties: [Staten Island]
+    email: "fallc@nyassembly.gov"
+  62:
+    name: "Michael Reilly"
+    party: Republican
+    counties: [Staten Island]
+    email: "reillym@nyassembly.gov"
+  63:
+    name: "Sam Pirozzolo"
+    party: Republican
+    counties: [Staten Island]
+    email: "pirozzolos@nyassembly.gov"
+  65:
+    name: "Grace Lee"
+    party: Democrat
+    counties: [Manhattan]
+    email: "leeg@nyassembly.gov"
+  66:
+    name: "Deborah Glick"
+    party: Democrat
+    counties: [Manhattan]
+    email: "glickd@nyassembly.gov"
+  67:
+    name: "Linda Rosenthal"
+    party: Democrat
+    counties: [Manhattan]
+    email: "rosenthall@nyassembly.gov"
+  68:
+    name: "Eddie Gibbs"
+    party: Democrat
+    counties: [Manhattan]
+    email: "gibbse@nyassembly.gov"
+  69:
+    name: "Micah Lasher"
+    party: Democrat
+    counties: [Manhattan]
+    email: "lasherm@nyassembly.gov"
+  70:
+    name: "Jordan Wright"
+    party: Democrat
+    counties: [Manhattan]
+    email: "wrightj@nyassembly.gov"
+  71:
+    name: "Al Taylor"
+    party: Democrat
+    counties: [Manhattan]
+    email: "taylora@nyassembly.gov"
+  72:
+    name: "Manny De Los Santos"
+    party: Democrat
+    counties: [Manhattan]
+    email: "delossantosm@nyassembly.gov"
+  73:
+    name: "Alex Bores"
+    party: Democrat
+    counties: [Manhattan]
+    email: "boresa@nyassembly.gov"
+  74:
+    name: "Harvey Epstein"
+    party: Democrat
+    counties: [Manhattan]
+    email: "epsteinh@nyassembly.gov"
+  75:
+    name: "Tony Simone"
+    party: Democrat
+    counties: [Manhattan]
+    email: "simonet@nyassembly.gov"
+  76:
+    name: "Rebecca Seawright"
+    party: Democrat
+    counties: [Manhattan]
+    email: "seawrightr@nyassembly.gov"
+  78:
+    name: "George Alvarez"
+    party: Democrat
+    counties: [Bronx]
+    email: "alvarezg@nyassembly.gov"
+  79:
+    name: "Chantel Jackson"
+    party: Democrat
+    counties: [Bronx]
+    email: "jacksonc@nyassembly.gov"
+  80:
+    name: "John Zaccaro Jr."
+    party: Democrat
+    counties: [Bronx]
+    email: "zaccaroj@nyassembly.gov"
+  81:
+    name: "Jeffrey Dinowitz"
+    party: Democrat
+    counties: [Bronx]
+    email: "dinowitzj@nyassembly.gov"
+  82:
+    name: "Michael Benedetto"
+    party: Democrat
+    counties: [Bronx]
+    email: "benedettom@nyassembly.gov"
+  83:
+    name: "Carl E. Heastie"
+    party: Democrat
+    counties: [Bronx]
+    email: "heastiec@nyassembly.gov"
+    note: "Speaker of the Assembly"
+  84:
+    name: "Amanda Septimo"
+    party: Democrat
+    counties: [Bronx]
+    email: "septimoa@nyassembly.gov"
+  85:
+    name: "Kenny Burgos"
+    party: Democrat
+    counties: [Bronx]
+    email: "burgosk@nyassembly.gov"
+  86:
+    name: "Yudelka Tapia"
+    party: Democrat
+    counties: [Bronx]
+    email: "tapiay@nyassembly.gov"
+  87:
+    name: "Karines Reyes"
+    party: Democrat
+    counties: [Bronx]
+    email: "reyesk@nyassembly.gov"

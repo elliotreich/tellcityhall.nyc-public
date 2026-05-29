@@ -1,0 +1,16 @@
+# FIPS county code -> NYC borough mapping
+"005":
+  borough: Bronx
+  borough_code: bronx
+"047":
+  borough: Brooklyn
+  borough_code: brooklyn
+"061":
+  borough: Manhattan
+  borough_code: manhattan
+"081":
+  borough: Queens
+  borough_code: queens
+"085":
+  borough: Staten Island
+  borough_code: staten_island

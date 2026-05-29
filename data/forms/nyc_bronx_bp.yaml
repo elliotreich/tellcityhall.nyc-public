@@ -1,0 +1,53 @@
+# Bronx Borough President — Revize CMS contact form
+# URL: https://bronxboropres.nyc.gov/contact/
+# Simple math CAPTCHA (non-standard, needs custom handling)
+bioguide: nyc_bronx_bp
+contact_form:
+  method: POST
+  action: ""
+  steps:
+    - visit: "https://bronxboropres.nyc.gov/contact/"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: name
+          selector: "input[name='name'], #name"
+          value: "$NAME_FIRST $NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[name='email_address'], input[type='email']"
+          value: "$EMAIL"
+          required: true
+        - name: subject
+          selector: "input[name='subject'], #subject"
+          value: "$SUBJECT"
+          required: false
+        - name: message
+          selector: "textarea[name='message'], textarea[name='your_message'], #message"
+          value: "$MESSAGE"
+          required: true
+    - select:
+        - name: department
+          selector: "select[name='Department'], select[name='department']"
+          value: "Constituent Services"
+          required: true
+          options:
+            Ombudsman: "Ombudsman"
+            Health: "Health"
+            Borough Operations: "Borough Operations"
+            Special Events: "Special Events"
+            Communications: "Communications"
+            Planning & Development: "Planning & Development"
+            Education: "Education"
+            Capital Budget: "Capital Budget"
+            Community Boards: "Community Boards"
+            Internships: "Internships"
+            Constituent Services: "Constituent Services"
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit']"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

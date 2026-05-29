@@ -1,0 +1,63 @@
+# NYS Assembly — Standardized contact form template
+# Used for ALL NYS Assembly members (~65 covering NYC).
+# Each member has the same form structure at: assembly.state.ny.us/mem/{slug}/contact/
+#
+# The member-specific URL is injected at runtime from nyc_officials.yaml.
+bioguide: nys_assembly_template
+contact_form:
+  method: POST
+  action: ""
+  steps:
+    - visit: "$FORM_URL"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='first_name'], #first-name"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='last_name'], #last-name"
+          value: "$NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[type='email']"
+          value: "$EMAIL"
+          required: true
+        - name: phone
+          selector: "input[name='phone'], input[type='tel']"
+          value: "$PHONE"
+          required: false
+        - name: address
+          selector: "input[name='address'], input[name='street']"
+          value: "$ADDRESS_STREET"
+          required: false
+        - name: city
+          selector: "input[name='city']"
+          value: "$ADDRESS_CITY"
+          required: false
+        - name: zip
+          selector: "input[name='zip'], input[name='zipcode']"
+          value: "$ADDRESS_ZIP5"
+          required: true
+        - name: subject
+          selector: "input[name='subject']"
+          value: "$SUBJECT"
+          required: false
+        - name: message
+          selector: "textarea[name='message'], textarea"
+          value: "$MESSAGE"
+          required: true
+    - select:
+        - name: topic
+          selector: "select[name='topic'], select[name='subject_area']"
+          value: "$TOPIC"
+          required: false
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit']"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

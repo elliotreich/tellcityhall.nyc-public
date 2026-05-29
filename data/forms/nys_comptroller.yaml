@@ -1,0 +1,15 @@
+# NYS Comptroller — contact stub
+# URL: https://www.osc.ny.gov/ — couldn't find contact page
+# This is a placeholder; the system falls back to email for this official.
+bioguide: nys_comptroller
+contact_form:
+  method: GET
+  action: "https://www.osc.ny.gov/"
+  steps:
+    - visit: "https://www.osc.ny.gov/"
+  success:
+    body:
+      contains: ""
+  note: >
+    No general contact form found on osc.ny.gov during audit.
+    The system falls back to email (contactus@osc.ny.gov) for this official.

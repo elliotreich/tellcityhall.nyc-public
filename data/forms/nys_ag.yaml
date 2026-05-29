@@ -1,0 +1,57 @@
+# NYS Attorney General — Drupal webform
+# URL: https://ag.ny.gov/contact-ag
+# ~10 fields, no CAPTCHA visible
+bioguide: nys_ag
+contact_form:
+  method: POST
+  action: ""
+  steps:
+    - visit: "https://ag.ny.gov/contact-ag"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='first_name'], #edit-first-name"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='last_name'], #edit-last-name"
+          value: "$NAME_LAST"
+          required: true
+        - name: email
+          selector: "input[name='email'], input[type='email'], #edit-email"
+          value: "$EMAIL"
+          required: true
+        - name: phone
+          selector: "input[name='phone'], input[type='tel'], #edit-phone"
+          value: "$PHONE"
+          required: false
+        - name: address1
+          selector: "input[name='address_1'], #edit-address-1"
+          value: "$ADDRESS_STREET"
+          required: false
+        - name: city
+          selector: "input[name='city'], #edit-city"
+          value: "$ADDRESS_CITY"
+          required: false
+        - name: zip
+          selector: "input[name='zip'], input[name='postal_code'], #edit-zip"
+          value: "$ADDRESS_ZIP5"
+          required: false
+        - name: comments
+          selector: "textarea[name='comments'], textarea[name='message'], #edit-comments"
+          value: "$MESSAGE"
+          required: true
+    - select:
+        - name: state
+          selector: "select[name='state'], #edit-state"
+          value: "$ADDRESS_STATE_POSTAL_ABBREV"
+          required: false
+    - click_on:
+        - value: "Submit"
+          selector: "input[type='submit'], button[type='submit'], #edit-submit"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"

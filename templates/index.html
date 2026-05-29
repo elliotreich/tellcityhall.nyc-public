@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Civic Bridge — Speak directly to your representatives</title>
+    <title>NYC Bridge — Contact your elected officials</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=1">
 </head>
 <body>
     <div class="stars"></div>
 
     <header class="header">
         <div class="header-inner">
-            <div class="logo"><span class="logo-mark">★</span><span class="logo-text">Civic Bridge</span></div>
-            <p class="tagline">Your voice, delivered to Congress.</p>
+            <div class="logo"><span class="logo-mark">🗽</span><span class="logo-text">NYC Bridge</span></div>
+            <p class="tagline">One message. Every official who represents you in New York City.</p>
         </div>
     </header>
 
@@ -26,15 +26,14 @@
             <section class="card" id="page-message">
                 <div class="card-accent"></div>
 
-                <!-- Message FIRST at top -->
                 <div class="form-group">
                     <label for="message" class="form-label">What do you want to say?</label>
-                    <textarea id="message" name="message" class="form-textarea" rows="12"
-                        placeholder="Dear Representative,&#10;&#10;I am writing to share my thoughts on..."
+                    <textarea id="message" name="message" class="form-textarea" rows="10"
+                        placeholder="Dear elected officials,&#10;&#10;I am writing to share my thoughts on..."
                         required maxlength="5000"></textarea>
                     <div class="form-hint-row">
                         <span class="form-hint" id="char-count">0 / 5000</span>
-                        <span class="form-hint" style="color:var(--white-muted)">Your message will be sent directly into your representatives' official contact forms.</span>
+                        <span class="form-hint" style="color:var(--white-muted)">Your message will be delivered to all 11 officials who represent you at the city and state level.</span>
                     </div>
                 </div>
 
@@ -43,35 +42,25 @@
                         <label for="topic" class="form-label">Topic</label>
                         <select id="topic" name="topic" class="form-select">
                             <option value="Other">General / Other</option>
-                            <option value="Healthcare">Healthcare</option>
-                            <option value="Economy">Economy & Jobs</option>
-                            <option value="Education">Education</option>
-                            <option value="Climate">Climate & Environment</option>
-                            <option value="Immigration">Immigration</option>
-                            <option value="Civil Rights">Civil Rights</option>
-                            <option value="Guns">Gun Policy</option>
                             <option value="Housing">Housing</option>
-                            <option value="Taxes">Taxes</option>
-                            <option value="Veterans">Veterans</option>
-                            <option value="Foreign Policy">Foreign Policy</option>
-                            <option value="Technology">Technology & Privacy</option>
                             <option value="Transportation">Transportation</option>
+                            <option value="Public Safety">Public Safety</option>
+                            <option value="Education">Education</option>
+                            <option value="Sanitation">Sanitation</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Climate">Climate & Environment</option>
+                            <option value="Budget">City Budget</option>
+                            <option value="Civil Rights">Civil Rights</option>
+                            <option value="Small Business">Small Business</option>
+                            <option value="Parks">Parks & Recreation</option>
+                            <option value="Transit">MTA / Transit</option>
+                            <option value="Immigration">Immigration</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="send-to-group">
-                    <span class="form-label" style="margin-bottom:0.5rem;">Send to</span>
-                    <div class="btn-group">
-                        <button type="button" class="btn-toggle" data-value="house">My Representative</button>
-                        <button type="button" class="btn-toggle active" data-value="all">All Representatives</button>
-                        <button type="button" class="btn-toggle" data-value="senate">My Senators</button>
-                    </div>
-                </div>
-
-                <!-- Name + Email BELOW message -->
                 <div class="section-divider"><span>Your information</span></div>
-                <p class="card-desc" style="margin-bottom:1rem;">Congress requires your name and email. Nothing is shared or stored publicly.</p>
+                <p class="card-desc" style="margin-bottom:1rem;">Most officials require your name and email. Nothing is shared or stored publicly.</p>
 
                 <div class="form-row">
                     <div class="form-group form-group-half">
@@ -87,10 +76,6 @@
                     <label for="email" class="form-label">Email <span class="required">*</span></label>
                     <input type="email" id="email" name="email" class="form-input" placeholder="jane@example.com" required autocomplete="email">
                 </div>
-                <label class="checkbox-label" style="margin-top:0.5rem;">
-                    <input type="checkbox" id="opt_save">
-                    <span>Remember me — save my info so I can look back on past messages</span>
-                </label>
 
                 <button type="button" class="btn btn-primary" id="btn-to-address" style="margin-top:1.5rem;width:100%;">Continue →</button>
             </section>
@@ -99,25 +84,20 @@
             <section class="card" id="page-address" style="display:none;">
                 <div class="card-accent card-accent-red"></div>
                 <h2 class="card-title">Where do you live?</h2>
-                <p class="card-desc">We use your address only to route your message to the right representatives. Nothing is stored.</p>
+                <p class="card-desc">We use your address only to find your elected officials. Nothing is stored.</p>
 
                 <form id="address-form" class="form" novalidate>
                     <div class="form-group autocomplete-wrapper">
-                        <label for="address" class="form-label">Street address</label>
-                        <input type="text" id="address" name="address" class="form-input" placeholder="Start typing your address..." required autocomplete="street-address">
+                        <label for="address" class="form-label">Street address in New York City</label>
+                        <input type="text" id="address" name="address" class="form-input" placeholder="Start typing your NYC address..." required autocomplete="street-address">
                         <div class="autocomplete-dropdown" id="autocomplete-list"></div>
                     </div>
 
                     <div id="confirm-area" style="display:none;">
-                        <div class="section-divider"><span>Sending to</span></div>
+                        <div class="section-divider"><span>Your elected officials</span></div>
                         <div id="confirm-reps" class="confirm-reps"></div>
 
-                        <div id="captcha-area" style="display:none;">
-                            <div class="section-divider"><span>Verify you're human</span></div>
-                            <div id="captcha-container"></div>
-                        </div>
-
-                        <div class="call-section" id="call-section" style="display:none;">
+                        <div id="call-area" style="display:none;">
                             <div class="section-divider"><span>Follow up by phone</span></div>
                             <div id="call-script" class="call-script"></div>
                         </div>
@@ -136,23 +116,21 @@
             <section class="card" id="page-results" style="display:none;">
                 <div class="card-accent card-accent-blue"></div>
                 <h2 class="card-title" id="result-title">Delivering...</h2>
+                <div class="result-summary" id="result-summary"></div>
                 <div id="result-list" class="result-list"></div>
                 <div id="result-warnings" class="result-warnings"></div>
                 <div id="result-call" class="call-section" style="display:none;"></div>
-                <button type="button" class="btn btn-primary" id="btn-new-message" style="display:none;">Send another message</button>
+                <button type="button" class="btn btn-primary" id="btn-new-message" style="display:none;margin-top:1.5rem;">Send another message</button>
             </section>
 
         </div>
     </main>
 
     <footer class="footer">
-        <p>Civic Bridge is a nonpartisan civic engagement tool. We do not store your personal information unless you opt in. Your message is sent directly to your representatives' official contact forms.</p>
+        <p>NYC Bridge is a nonpartisan civic engagement tool. We do not store your personal information. Your message is delivered directly to your elected officials' official contact channels.</p>
     </footer>
 
     <div id="sr-announcer" class="sr-only" aria-live="polite"></div>
-    <script src="/static/app.js?v=3"></script>
-    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
-    <script src="https://js.hcaptcha.com/1/api.js?render=explicit" async defer></script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script src="/static/app.js?v=1"></script>
 </body>
 </html>

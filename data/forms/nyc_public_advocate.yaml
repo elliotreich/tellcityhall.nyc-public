@@ -1,0 +1,60 @@
+# Public Advocate — Next.js intake form
+# URL: https://advocate.nyc.gov/intake
+# No CAPTCHA, simple 8-field form
+bioguide: nyc_public_advocate
+contact_form:
+  method: POST
+  action: "https://advocate.nyc.gov/api/intake"
+  steps:
+    - visit: "https://advocate.nyc.gov/intake"
+    - wait:
+        - value: 2
+    - fill_in:
+        - name: first_name
+          selector: "input[name='firstName']"
+          value: "$NAME_FIRST"
+          required: true
+        - name: last_name
+          selector: "input[name='lastName']"
+          value: "$NAME_LAST"
+          required: true
+        - name: phone
+          selector: "input[name='phoneNumber'], input[type='tel']"
+          value: "$PHONE"
+          required: false
+        - name: email
+          selector: "input[name='emailAddress'], input[name='e-mailAddress'], input[type='email']"
+          value: "$EMAIL"
+          required: true
+        - name: address
+          selector: "input[name='houseNumberAndStreet'], input[name='address']"
+          value: "$ADDRESS_STREET"
+          required: true
+        - name: zip
+          selector: "input[name='zipCode'], input[name='zip']"
+          value: "$ADDRESS_ZIP5"
+          required: true
+        - name: description
+          selector: "textarea[name='descriptionOfTheIssue'], textarea[name='description'], textarea[name='message']"
+          value: "$MESSAGE"
+          required: true
+    - select:
+        - name: issue
+          selector: "select[name='issueRelatedTo'], select[name='category']"
+          value: "$TOPIC"
+          required: true
+          options:
+            Infrastructure, Environment & Justice: "Infrastructure, Environment & Justice"
+            Justice and Safety: "Justice and Safety"
+            Housing & Health Equity: "Housing & Health Equity"
+            Civic & Community Empowerment: "Civic & Community Empowerment"
+            Education & Opportunity: "Education & Opportunity"
+            Other: "Civic & Community Empowerment"
+    - click_on:
+        - value: "Submit"
+          selector: "button[type='submit'], input[type='submit']"
+    - wait:
+        - value: 3
+  success:
+    body:
+      contains: "Thank you"
