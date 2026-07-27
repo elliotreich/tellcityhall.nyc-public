@@ -7,13 +7,25 @@ must be traceable to a real submitted message, and topic summaries must
 include at least one verbatim excerpt from an actual constituent message.
 """
 import html as html_module
+import json
+import logging
+import re
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
-from config import DIGEST_MIN_FOR_SUMMARY
+from config import (
+    DIGEST_GEMINI_MODEL,
+    DIGEST_GEMINI_TIMEOUT,
+    DIGEST_MIN_FOR_SUMMARY,
+    NYC_BRIDGE_GEMINI_KEY,
+)
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Summarizer interface
@@ -29,6 +41,27 @@ class TopicSummary:
     quotes: list[str] = field(default_factory=list)
     prose: str = ""
     """Short AI-generated prose summary (empty when using deterministic fallback)."""
+
+
+#: Ordinary connective/summary vocabulary that should not count as "novel"
+#: subject matter when checking whether prose is grounded in the messages.
+_COMMON_WORDS = {
+    "about", "above", "after", "again", "against", "among", "around", "asked",
+    "because", "been", "before", "being", "below", "between", "both", "concern",
+    "concerned", "concerns", "constituent", "constituents", "could", "council",
+    "district", "during", "each", "further", "harder", "having", "input",
+    "issue", "issues", "local", "matter", "matters", "member", "message",
+    "messages", "月", "multiple", "office", "other", "raise", "raised", "raises",
+    "regarding", "report", "reported", "reports", "residents", "respond",
+    "response", "said", "same", "several", "should", "some", "state", "such",
+    "their", "them", "then", "there", "these", "they", "thing", "those",
+    "through", "under", "until", "urging", "very", "wanted", "were", "what",
+    "when", "where", "which", "while", "who", "with", "would", "write",
+    "writes", "writing", "written", "wrote", "topic", "topics", "also",
+    "additional", "additionally", "specific", "specifically", "include",
+    "includes", "including", "mention", "mentions", "mentioned", "describe",
+    "describes", "described", "note", "notes", "noted", "area", "areas",
+}
 
 
 class Summarizer(ABC):
@@ -96,13 +129,137 @@ class LLMSummarizer(Summarizer):
             pass
         return self._fallback.summarize(messages)
 
-    def _llm_summarize(self, messages: list[dict]) -> list[TopicSummary]:
-        """Call the configured LLM to produce topic summaries.
+    #: Prose longer than this (chars) is rejected as over-generation.
+    MAX_PROSE_CHARS = 600
 
-        This stub always falls back to deterministic output.  Subclass or
-        monkey-patch to integrate a real LLM provider.
+    #: Phrases that imply the model is asserting facts it cannot know.
+    BANNED_PATTERNS = (
+        r"\ball (?:of (?:the|their)\s+)?constituents\b",
+        r"\bevery (?:constituent|resident|voter)\b",
+        r"\b(?:the )?majority of\b",
+        r"\bmost (?:constituents|residents|voters)\b",
+        r"\bpolls?\s+show\b",
+        r"\bstudies?\s+show\b",
+        r"\bresearch\s+shows\b",
+        r"\b\d+\s*(?:%|percent)\b",
+        r"\bvoters? (?:will|would)\b",
+        r"\bdemands?\s+that\s+you\b",
+    )
+
+    def _build_prompt(self, topic: str, msgs: list[dict]) -> str:
+        """Build a strictly-bounded summarisation prompt for one topic."""
+        numbered = "\n\n".join(
+            f"[{i + 1}] {m.get('message', '').strip()}"
+            for i, m in enumerate(msgs)
+        )
+        return (
+            "You summarise constituent messages for a New York City Council "
+            "office. Your summary is read by a chief of staff.\n\n"
+            "STRICT RULES:\n"
+            "1. Use ONLY what is written in the messages below. Never add "
+            "outside facts, statistics, policy history, or context.\n"
+            "2. Never state or imply how many constituents hold a view, and "
+            "never generalise beyond these specific messages.\n"
+            "3. Never invent a position nobody wrote. If the messages are "
+            "vague, say only what they actually say.\n"
+            "4. Do not recommend actions or take a political side.\n"
+            "5. Write 2-3 plain sentences. No preamble, no bullets, no "
+            "headings, no quotation marks.\n"
+            "6. If you cannot summarise faithfully, reply with exactly: "
+            "INSUFFICIENT\n\n"
+            f"Topic: {topic}\n"
+            f"Number of messages: {len(msgs)}\n\n"
+            f"Messages:\n{numbered}\n\n"
+            "Summary:"
+        )
+
+    def _verify_prose(self, prose: str, msgs: list[dict]) -> str:
+        """Reject prose that over-generates. Returns '' if it fails any check.
+
+        This is the fabrication guardrail. Quotes are never model-supplied, so
+        the only thing that needs policing is the generated prose.
         """
-        raise NotImplementedError("LLM summariser is not configured")
+        text = (prose or "").strip()
+        if not text or text.upper().startswith("INSUFFICIENT"):
+            return ""
+        if len(text) > self.MAX_PROSE_CHARS:
+            logger.warning("digest: prose rejected (too long: %d chars)", len(text))
+            return ""
+
+        lowered = text.lower()
+        for pattern in self.BANNED_PATTERNS:
+            if re.search(pattern, lowered):
+                logger.warning("digest: prose rejected (banned pattern: %s)", pattern)
+                return ""
+
+        # Require lexical grounding: content words in the prose should mostly
+        # come from the source messages, so the model cannot introduce a whole
+        # new subject that no constituent raised.
+        source = " ".join(m.get("message", "") for m in msgs).lower()
+        source_words = set(re.findall(r"[a-z]{5,}", source))
+        prose_words = set(re.findall(r"[a-z]{5,}", lowered))
+        novel = prose_words - source_words - _COMMON_WORDS
+        if prose_words and len(novel) / len(prose_words) > 0.5:
+            logger.warning(
+                "digest: prose rejected (ungrounded: %d/%d novel words)",
+                len(novel), len(prose_words),
+            )
+            return ""
+        return text
+
+    def _call_gemini(self, prompt: str) -> str:
+        """POST to the Gemini API and return the raw text response."""
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{DIGEST_GEMINI_MODEL}:generateContent"
+        )
+        payload = json.dumps({
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 300},
+        }).encode()
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": NYC_BRIDGE_GEMINI_KEY,
+            },
+        )
+        with urllib.request.urlopen(req, timeout=DIGEST_GEMINI_TIMEOUT) as resp:
+            body = json.loads(resp.read().decode())
+        candidates = body.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = candidates[0].get("content", {}).get("parts") or []
+        return "".join(p.get("text", "") for p in parts).strip()
+
+    def _llm_summarize(self, messages: list[dict]) -> list[TopicSummary]:
+        """Summarise each topic with Gemini, keeping deterministic quotes.
+
+        Quotes and counts always come from the deterministic summariser; the
+        model only ever contributes prose, and that prose must survive
+        ``_verify_prose``. Any topic whose prose fails verification degrades to
+        quotes-only rather than shipping unverified text.
+        """
+        if not NYC_BRIDGE_GEMINI_KEY:
+            raise RuntimeError("NYC_BRIDGE_GEMINI_KEY is not configured")
+
+        base = self._fallback.summarize(messages)
+        by_topic: dict[str, list[dict]] = defaultdict(list)
+        for m in messages:
+            by_topic[m.get("topic", "Other")].append(m)
+
+        for summary in base:
+            msgs = by_topic.get(summary.topic, [])
+            if not msgs:
+                continue
+            try:
+                raw = self._call_gemini(self._build_prompt(summary.topic, msgs))
+            except (urllib.error.URLError, OSError, ValueError, KeyError) as exc:
+                logger.warning("digest: Gemini call failed for %r: %s", summary.topic, exc)
+                continue
+            summary.prose = self._verify_prose(raw, msgs)
+        return base
 
 
 # ---------------------------------------------------------------------------

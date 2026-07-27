@@ -28,6 +28,24 @@ def _make_message(
     }
 
 
+def _pad_to_summary_threshold(msgs: list[dict]) -> list[dict]:
+    """Extend *msgs* until it reaches DIGEST_MIN_FOR_SUMMARY.
+
+    Tests that exercise the cover page must supply at least the threshold
+    number of messages; padding keeps them correct if the threshold changes.
+    """
+    padded = list(msgs)
+    i = 0
+    while len(padded) < DIGEST_MIN_FOR_SUMMARY:
+        base = msgs[i % len(msgs)]
+        clone = dict(base)
+        clone["message"] = f"{base['message']} (additional constituent {i + 1})"
+        padded.append(clone)
+        i += 1
+    return padded
+
+
+
 class TestFallbackSummarizer:
     def test_single_topic(self):
         msgs = [_make_message(topic="Housing")]
@@ -89,6 +107,7 @@ class TestBuildDigestText:
             _make_message(topic="Transportation", message="Fix the B61 bus."),
             _make_message(topic="Transportation", message="Extend the G train."),
         ]
+        msgs = _pad_to_summary_threshold(msgs)
         text = build_digest_text(
             district=33,
             council_member_name="Lincoln Restler",
@@ -99,7 +118,7 @@ class TestBuildDigestText:
         assert "Lincoln Restler" in text
         assert "Housing" in text
         assert "Transportation" in text
-        assert "Total messages: 4" in text
+        assert f"Total messages: {len(msgs)}" in text
         assert "MESSAGE 1" in text
         assert "MESSAGE 4" in text
         assert "More affordable units" in text
@@ -148,6 +167,7 @@ class TestBuildDigestText:
             _make_message(submitted_at="2026-07-27T10:00:00+00:00"),
             _make_message(submitted_at="2026-07-27T14:30:00+00:00"),
         ]
+        msgs = _pad_to_summary_threshold(msgs)
         # Need 3+ for cover page
         msgs.append(_make_message(submitted_at="2026-07-27T16:00:00+00:00"))
         text = build_digest_text(district=33, council_member_name="Test", messages=msgs)
@@ -164,6 +184,7 @@ class TestBuildDigestText:
             _make_message(topic="Parks", message="Clean the parks."),
             _make_message(topic="Safety", message="More police patrols."),
         ]
+        msgs = _pad_to_summary_threshold(msgs)
         text = build_digest_text(
             district=1,
             council_member_name="Chris Marte",
@@ -189,6 +210,7 @@ class TestBuildDigestHtml:
             _make_message(topic="Transportation", message="Better buses."),
             _make_message(topic="Transportation", message="Subway expansion."),
         ]
+        msgs = _pad_to_summary_threshold(msgs)
         html = build_digest_html(
             district=33,
             council_member_name="Lincoln Restler",
@@ -221,6 +243,7 @@ class TestBuildDigestHtml:
             _make_message(topic="Housing", message="Rent is too high."),
             _make_message(topic="Transportation", message="Fix the subway."),
         ]
+        msgs = _pad_to_summary_threshold(msgs)
         html = build_digest_html(
             district=1,
             council_member_name="Chris Marte",

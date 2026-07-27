@@ -62,8 +62,13 @@ DELAY_BETWEEN_SUBMISSIONS = float(os.environ.get("SUBMIT_DELAY", "1.0"))
 DIGEST_DB_PATH = DATA_DIR / "queue.db"
 """Path to the SQLite database for digest message queue."""
 
-DIGEST_MIN_FOR_SUMMARY = int(os.environ.get("DIGEST_MIN_FOR_SUMMARY", "3"))
-"""Minimum pending messages needed to include AI summary in a digest."""
+DIGEST_MIN_FOR_SUMMARY = int(os.environ.get("DIGEST_MIN_FOR_SUMMARY", "12"))
+"""Minimum pending messages before the AI cover letter is generated.
+
+Below this, messages are forwarded plainly with no summary page. A cover
+letter "summarising" a handful of messages a staffer could read directly is
+noise, and it makes the tool look like it is performing analysis rather than
+doing it. 12 is roughly where raw volume becomes a real reading burden."""
 
 DIGEST_DOMAIN_DELAY = float(os.environ.get("DIGEST_DOMAIN_DELAY", "2.0"))
 """Minimum seconds between sends to the same recipient domain."""
@@ -73,3 +78,19 @@ DIGEST_TIMEZONE = os.environ.get("DIGEST_TIMEZONE", "America/New_York")
 
 DIGEST_VERIFY_BASE_URL = os.environ.get("DIGEST_VERIFY_BASE_URL", "http://localhost:8000")
 """Base URL for verification links in confirmation emails."""
+
+# ---- Digest AI summarisation (Gemini) ----
+NYC_BRIDGE_GEMINI_KEY = os.environ.get("NYC_BRIDGE_GEMINI_KEY", "")
+"""Dedicated Google AI Studio key for digest summarisation.
+
+Lives in its OWN AI Studio project so free-tier quota is not shared, and is
+deliberately NOT part of the LiteLLM free pool. Empty => deterministic
+(quotes + tallies only) digests.
+"""
+
+DIGEST_GEMINI_MODEL = os.environ.get("DIGEST_GEMINI_MODEL", "gemini-flash-lite-latest")
+"""Model used for per-topic prose. Cheap/fast is correct here: the model only
+writes 2-3 sentences per topic and never supplies facts or quotes."""
+
+DIGEST_GEMINI_TIMEOUT = float(os.environ.get("DIGEST_GEMINI_TIMEOUT", "30"))
+"""Seconds to wait on the summarisation call before falling back."""
