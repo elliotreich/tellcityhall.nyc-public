@@ -57,3 +57,19 @@ DEFAULT_SUBJECT = "Message from a constituent"
 EMAILS_PER_MINUTE = int(os.environ.get("EMAILS_PER_MINUTE", "10"))
 MAX_CONCURRENT_SUBMISSIONS = int(os.environ.get("MAX_CONCURRENT", "3"))
 DELAY_BETWEEN_SUBMISSIONS = float(os.environ.get("SUBMIT_DELAY", "1.0"))
+
+# ---- Digest Mode ----
+DIGEST_DB_PATH = DATA_DIR / "queue.db"
+"""Path to the SQLite database for digest message queue."""
+
+DIGEST_MIN_FOR_SUMMARY = int(os.environ.get("DIGEST_MIN_FOR_SUMMARY", "3"))
+"""Minimum pending messages needed to include AI summary in a digest."""
+
+DIGEST_DOMAIN_DELAY = float(os.environ.get("DIGEST_DOMAIN_DELAY", "2.0"))
+"""Minimum seconds between sends to the same recipient domain."""
+
+DIGEST_TIMEZONE = os.environ.get("DIGEST_TIMEZONE", "America/New_York")
+"""Timezone for digest delivery timing."""
+
+DIGEST_VERIFY_BASE_URL = os.environ.get("DIGEST_VERIFY_BASE_URL", "http://localhost:8000")
+"""Base URL for verification links in confirmation emails."""

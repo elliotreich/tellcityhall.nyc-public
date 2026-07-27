@@ -7,10 +7,12 @@ Endpoints:
   GET  /api/autocomplete  — Address autocomplete via Census Geocoder
   POST /api/preview       — Validate address, return 11 officials + contact info
   POST /api/send          — Deliver message to all officials (email + form)
+  GET  /verify/{token}    — Verify a constituent's email address for digest delivery
 """
 import json
 import time
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -22,8 +24,17 @@ from config import PROJECT_ROOT, FORM_SUBMIT_TIMEOUT, MAX_CONCURRENT_SUBMISSIONS
 from engine.nyc_address_resolver import validate_and_resolve, autocomplete
 from engine.nyc_officials import get_officials_for_address, NYCOfficial
 from engine.email_sender import get_email_sender
+from engine.queue import init_db, verify_message
 
-app = FastAPI(title="NYC Bridge", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Initialise the digest queue database on startup."""
+    init_db()
+    yield
+
+
+app = FastAPI(title="NYC Bridge", version="0.1.0", lifespan=lifespan)
 
 # Static files + templates
 static_dir = PROJECT_ROOT / "static"
@@ -285,3 +296,43 @@ async def api_send(
             "skipped": skipped,
         },
     })
+
+
+@app.get("/verify/{token}")
+async def verify_email(token: str):
+    """
+    Verify a constituent's email address via a token link.
+
+    Tokens are generated when a message is enqueued.  Unverified messages are
+    never included in a digest (prevents blocking the domain with unconfirmed
+    submissions).
+    """
+    from engine.queue import get_message_by_token
+
+    message = get_message_by_token(token)
+    if not message:
+        return HTMLResponse(
+            "<h1>Invalid or expired verification link.</h1>"
+            "<p>This token was not found. It may have already been used or the link is incorrect.</p>",
+            status_code=404,
+        )
+
+    if message.get("verified"):
+        return HTMLResponse(
+            "<h1>Email already verified.</h1>"
+            "<p>Your email was confirmed earlier. Your message will be included in the next digest.</p>"
+        )
+
+    success = verify_message(token)
+    if success:
+        return HTMLResponse(
+            "<h1>Email verified!</h1>"
+            "<p>Your message has been confirmed and will be included in the next "
+            "digest for your Council district. Thank you.</p>"
+        )
+
+    return HTMLResponse(
+        "<h1>Verification failed.</h1>"
+        "<p>Something went wrong. Please try the link again or resubmit your message.</p>",
+        status_code=500,
+    )

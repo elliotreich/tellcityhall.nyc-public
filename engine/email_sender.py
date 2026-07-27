@@ -5,6 +5,7 @@ Handles email composition and delivery to email-based officials.
 import asyncio
 import time
 from dataclasses import dataclass, field
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
 
@@ -20,6 +21,7 @@ from config import (
     MAILGUN_API_KEY,
     MAILGUN_DOMAIN,
     EMAILS_PER_MINUTE,
+    DIGEST_DOMAIN_DELAY,
 )
 
 
@@ -38,9 +40,10 @@ class EmailSender:
     def __init__(self):
         self._semaphore = asyncio.Semaphore(EMAILS_PER_MINUTE)
         self._last_send_time = 0.0
+        self._domain_last_send: dict[str, float] = {}
 
     async def _rate_limit(self):
-        """Enforce rate limit to avoid spam filters."""
+        """Enforce global rate limit to avoid spam filters."""
         async with self._semaphore:
             now = time.monotonic()
             min_interval = 60.0 / EMAILS_PER_MINUTE
@@ -48,6 +51,22 @@ class EmailSender:
             if wait > 0:
                 await asyncio.sleep(wait)
             self._last_send_time = time.monotonic()
+
+    @staticmethod
+    def _extract_domain(email: str) -> str:
+        """Return the lowercased domain portion of an email address."""
+        idx = email.find("@")
+        return email[idx + 1 :].strip().lower() if idx >= 0 else email.strip().lower()
+
+    async def _domain_rate_limit(self, recipient_email: str):
+        """Enforce per-domain rate limit to pace sends to the same mail server."""
+        domain = self._extract_domain(recipient_email)
+        now = time.monotonic()
+        last = self._domain_last_send.get(domain, 0.0)
+        wait = last + DIGEST_DOMAIN_DELAY - now
+        if wait > 0:
+            await asyncio.sleep(wait)
+        self._domain_last_send[domain] = time.monotonic()
 
     def _compose_email(
         self,
@@ -266,6 +285,200 @@ class EmailSender:
             return EmailDeliveryResult(
                 success=False,
                 error=f"Mailgun send failed: {e}",
+            )
+
+
+    def _compose_multipart_email(
+        self,
+        to_email: str,
+        subject: str,
+        body_text: str,
+        body_html: str,
+        reply_to: str,
+    ) -> MIMEMultipart:
+        """Compose a multipart/alternative email with plain-text and HTML versions."""
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg["X-Mailer"] = "NYC Bridge (https://nyc-bridge.local)"
+
+        if reply_to:
+            msg["Reply-To"] = reply_to
+
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        msg.attach(MIMEText(body_html, "html", "utf-8"))
+        return msg
+
+    async def send_digest(
+        self,
+        to_email: str,
+        to_name: str,
+        subject: str,
+        body_text: str,
+        body_html: str,
+        reply_to: str = "",
+    ) -> EmailDeliveryResult:
+        """Send a digest email (HTML + plain-text multipart) to a Council office.
+
+        Applies both the global rate limit and the per-domain rate limit for
+        recipient mail servers.
+        """
+        await self._rate_limit()
+        await self._domain_rate_limit(to_email)
+
+        msg = self._compose_multipart_email(
+            to_email=to_email,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+            reply_to=reply_to,
+        )
+
+        if SENDGRID_API_KEY:
+            return await self._send_via_sendgrid_msg(to_email, subject, msg, reply_to)
+
+        if MAILGUN_API_KEY and MAILGUN_DOMAIN:
+            return await self._send_via_mailgun_msg(to_email, subject, body_text, reply_to, body_html)
+
+        return await self._send_via_smtp_msg(to_email, to_name, msg)
+
+    async def _send_via_smtp_msg(
+        self,
+        to_email: str,
+        to_name: str,
+        msg: MIMEMultipart,
+    ) -> EmailDeliveryResult:
+        """Send a pre-composed message via SMTP."""
+        try:
+            import aiosmtplib
+
+            if SMTP_USE_TLS:
+                await aiosmtplib.send(
+                    msg,
+                    hostname=SMTP_HOST,
+                    port=SMTP_PORT,
+                    username=SMTP_USERNAME or None,
+                    password=SMTP_PASSWORD or None,
+                    start_tls=True,
+                    timeout=30,
+                )
+            else:
+                await aiosmtplib.send(
+                    msg,
+                    hostname=SMTP_HOST,
+                    port=SMTP_PORT,
+                    timeout=30,
+                )
+
+            return EmailDeliveryResult(
+                success=True,
+                message=f"Digest sent to {to_email}",
+                smtp_response="250 OK",
+            )
+        except Exception as e:
+            return EmailDeliveryResult(
+                success=False,
+                error=f"SMTP digest send failed: {e}",
+                message=f"Could not send digest to {to_email}",
+            )
+
+    async def _send_via_sendgrid_msg(
+        self, to_email: str, subject: str, msg: MIMEMultipart, reply_to: str
+    ) -> EmailDeliveryResult:
+        """Send a pre-composed message via SendGrid API."""
+        try:
+            import httpx
+
+            body_text = ""
+            body_html = ""
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    body_text = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                elif part.get_content_type() == "text/html":
+                    body_html = part.get_payload(decode=True).decode("utf-8", errors="replace")
+
+            payload = {
+                "personalizations": [{"to": [{"email": to_email}]}],
+                "from": {"email": FROM_EMAIL, "name": FROM_NAME},
+                "subject": subject,
+                "content": [
+                    {"type": "text/plain", "value": body_text},
+                ],
+            }
+            if body_html:
+                payload["content"].append({"type": "text/html", "value": body_html})
+            if reply_to:
+                payload["reply_to"] = {"email": reply_to}
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    headers={
+                        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+
+                if resp.status_code in (200, 201, 202):
+                    return EmailDeliveryResult(
+                        success=True,
+                        message=f"Digest sent to {to_email} via SendGrid",
+                        smtp_response=f"HTTP {resp.status_code}",
+                    )
+                else:
+                    error_body = resp.text[:500]
+                    return EmailDeliveryResult(
+                        success=False,
+                        error=f"SendGrid API error {resp.status_code}: {error_body}",
+                    )
+        except Exception as e:
+            return EmailDeliveryResult(
+                success=False,
+                error=f"SendGrid digest send failed: {e}",
+            )
+
+    async def _send_via_mailgun_msg(
+        self, to_email: str, subject: str, body_text: str, reply_to: str, body_html: str = ""
+    ) -> EmailDeliveryResult:
+        """Send a pre-composed message via Mailgun API."""
+        try:
+            import httpx
+
+            data: dict = {
+                "from": f"{FROM_NAME} <{FROM_EMAIL}>",
+                "to": to_email,
+                "subject": subject,
+                "text": body_text,
+            }
+            if reply_to:
+                data["h:Reply-To"] = reply_to
+            if body_html:
+                data["html"] = body_html
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
+                    auth=("api", MAILGUN_API_KEY),
+                    data=data,
+                )
+
+                if resp.status_code in (200, 201, 202):
+                    return EmailDeliveryResult(
+                        success=True,
+                        message=f"Digest sent to {to_email} via Mailgun",
+                        smtp_response=f"HTTP {resp.status_code}",
+                    )
+                else:
+                    return EmailDeliveryResult(
+                        success=False,
+                        error=f"Mailgun API error {resp.status_code}: {resp.text[:500]}",
+                    )
+        except Exception as e:
+            return EmailDeliveryResult(
+                success=False,
+                error=f"Mailgun digest send failed: {e}",
             )
 
 

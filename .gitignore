@@ -5,3 +5,4 @@ data/contact-congress/
 data/congress-legislators/
 .DS_Store
 *.log
+data/queue.db
