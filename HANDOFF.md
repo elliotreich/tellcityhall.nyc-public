@@ -83,18 +83,22 @@ One office gets at most one digest per cycle, so volume is decoupled from user t
 > A digest renders correctly end-to-end (cover page → tallies → quotes → raw messages),
 > and the `<3` low-volume rule correctly suppresses the cover page for a single message.
 >
-> **Not yet done / caveats — this is the real remaining Stage 1 work:**
-> - **NONE of it is code-reviewed by a human, and the tests were written by the same
->   agent that wrote the code.** Review before trusting.
-> - **Nothing is committed.** Commit early so work isn't lost.
-> - `LLMSummarizer._llm_summarize` **raises `NotImplementedError`** — no LLM is wired
->   in, so it *always* falls back to deterministic quotes+tallies. This is currently
->   safe (it cannot fabricate), but §4.2's quote-anchoring rules are therefore
->   **unenforced and untested against a real model.** Wiring an LLM in is the point at
->   which fabrication risk becomes live — implement the guardrails *with* it.
-> - There is a stray `data/queue-state.json` — confirm whether it's real state or debris.
-> - `build_digest_text(district, council_member_name, messages, ...)` — note the
->   parameter is `council_member_name`, not `official_name`.
+> **UPDATE — Stage 1 is now committed and the LLM is wired.**
+> - Commit `59d0bcc` — digest mode (queue, builder, scheduler, tests).
+> - Commit `3280815` — Gemini summarizer + fabrication guardrails, threshold 3 → 12.
+> - **110 tests pass** (50 original + digest + 15 new guardrail tests).
+> - `data/queue-state.json` was empty scaffolding — harmless.
+>
+> **Remaining caveats:**
+> - **Still not human-reviewed.** The digest/queue/scheduler code was machine-written
+>   and its tests were written by the same agent. The *guardrail* tests
+>   (`tests/test_guardrails.py`) were written separately and adversarially, and were
+>   verified to reject 9 real fabrication patterns while accepting a faithful summary.
+> - **The Gemini path has never run against the live API** — `NYC_BRIDGE_GEMINI_KEY`
+>   is still a placeholder in Infisical (see §6). Everything to date exercises the
+>   deterministic path and mocked failures. First real call is untested.
+> - `build_digest_text(district, council_member_name, messages, ...)` — the parameter
+>   is `council_member_name`, not `official_name`.
 >
 > Treat the rest of §4 as the **spec to review the existing code against**, not a from-scratch build order.
 
@@ -118,7 +122,22 @@ SQLite at `data/queue.db`, WAL mode, stdlib `sqlite3`, no ORM.
 *Why this is flagged:* an AI-fabricated constituent position, sent to a government office from a civic tool, is the worst possible failure for this product's credibility. Constrain it hard.
 
 ### 4.3 Low-volume rule
-`DIGEST_MIN_FOR_SUMMARY = 3`. Below 3 pending messages, forward them plainly — a "digest" summarizing one message is worse than the message. **0 pending → send nothing.** (This is also a natural cost control early on.)
+**`DIGEST_MIN_FOR_SUMMARY = 12`** (raised from 3 by Elliot on 2026-07-27). Below 12 pending messages, forward them plainly with **no cover letter** — a cover page "summarising" a handful of messages a staffer could read directly is noise, and makes the tool look like it is performing analysis rather than doing it. **0 pending → send nothing.**
+
+Consequence worth knowing: early on, most districts will fall below 12, so most digests ship with **no AI at all**. That is intended — the risky component only activates when there is enough material to summarise meaningfully.
+
+### 4.3b AI summarisation — implemented (commit `3280815`)
+`LLMSummarizer` calls Gemini directly (stdlib `urllib`, no SDK) using
+`NYC_BRIDGE_GEMINI_KEY` / `DIGEST_GEMINI_MODEL` (default `gemini-flash-lite-latest`).
+
+**The guardrail design — do not weaken this:**
+- **Quotes and tallies are always deterministic**, extracted in code from real messages. The model *only* supplies prose, so it can never invent a quote.
+- `_verify_prose()` rejects prose that: exceeds 600 chars; matches banned patterns (percentages, "majority of", "all/every constituent", "polls/studies show", "demands that you"); or is lexically ungrounded (>50% of content words absent from the source messages).
+- A topic whose prose fails verification **degrades to quotes-only** rather than shipping unverified text.
+- No key / API failure / empty response → deterministic fallback.
+- The prompt itself forbids outside facts, counts, generalisation, and recommendations, and instructs the model to reply `INSUFFICIENT` rather than strain.
+
+Verified adversarially: 9 fabrication patterns rejected (invented statistic, false generalisation, majority claim, cited research, every-resident claim, polling claim, ungrounded topic drift, over-generation, sentinel) while a faithful grounded summary is accepted. See `tests/test_guardrails.py`.
 
 ### 4.4 Reply-To routing
 A chief of staff **must** be able to reply to the actual constituent. One constituent → `Reply-To` = their address. Several → `Reply-To` = sender, with each constituent's email shown clearly beside their message. Without this the digest reads as astroturf and the product's value collapses.
@@ -154,9 +173,21 @@ Honest README rewrite (§0), abuse controls, scheduler enrollment, and a deliber
 
 - **Digests must NOT send from `elliot@elliotreich.com` or any personal address.** Elliot is buying a **dedicated domain** for the product; all office-facing mail sends from that domain, on a **new, product-owned Resend account**. He is happy to be publicly credited as the builder, but the product must not depend on his personal stack or identity.
 - **Cold-domain risk is the top launch hazard.** A brand-new domain sending 51 automated messages into `council.nyc.gov` is textbook spam-filter bait, and `.gov` filters are unforgiving. SPF + DKIM + DMARC are launch-blocking, not polish. Warm up by sending to Elliot's own inboxes for several days before any office receives anything.
-- **Hosting:** recommend the **Oracle VPS** (same stack as the already-live `civic-bridge.service`, no rewrite, $0) with **Cloudflare** for DNS/TLS/email auth on the new domain. Per Elliot's stack strategy: new public/edge work → Cloudflare, new **stateful** work → Oracle VPS. Digest mode is stateful. **Oracle hard limit: $0.00, Always Free resources only.**
+- **Hosting: OPEN — Elliot wants this OFF his personal VPS if possible.** Decision deferred until the code works (it is host-agnostic Python). Analysis:
+  - **Google Cloud Run + Firestore — the leading option.** Deploys the existing Python/FastAPI app **with no rewrite**; 2M requests/month always-free. Digest mode is a **once-daily batch job** (Cloud Scheduler → wake → process all districts → sleep), so cold start is irrelevant and compute is billed only for the ~30s it runs. **Cost: SQLite will not survive** — Cloud Run containers are ephemeral and messages arrive while scaled to zero, so `data/queue.db` must be ported to **Firestore** (free tier). That port is the main migration work. Requires a GCP billing account on file (will not charge at this volume).
+  - **Cloudflare Workers + D1 — rejected for now.** Workers are JS/TS; this is Python. Would mean rewriting ~1,900 lines of tested code. Cost is a rewrite, not money.
+  - **Oracle VPS — the fallback.** Zero migration; SQLite + cron work as built today. But it keeps the product on Elliot's personal infrastructure, which he explicitly wants to avoid. **Oracle hard limit: $0.00, Always Free only.**
+  - Either way, **Cloudflare** handles DNS/TLS/email auth on the new domain.
+  - **Design for resumability:** if the daily run dies mid-way through district 30, it must not re-send districts 1–29. The per-message idempotency already built is the right foundation — preserve it through any storage port.
 - **Do not `git push` from the VPS** until its GitHub auth is fixed (§1).
 - **Do not buy the domain** — Elliot purchases it himself.
+
+### Inference key — dedicated, already provisioned
+Digest summarisation runs on **one dedicated Google AI Studio key**, isolated from all other inference:
+- Infisical secret name: **`NYC_BRIDGE_GEMINI_KEY`** — created 2026-07-27, currently a **PLACEHOLDER**. Elliot generates the real key in a **dedicated AI Studio project** and replaces the value.
+- **It must live in its own AI Studio project**: Gemini free-tier quota is enforced **per Google Cloud project, not per key**. A key inside an existing project shares that project's limits.
+- **`GEMINI_8` was removed from the LiteLLM router** (config `~/Projects/infrastructure/litellm/config.yaml`, backup `config.yaml.bak-pre-nycbridge-20260727`) so this lane can never be consumed by general agent traffic. Its 4 deployments were all in the generic `free` pool; the pool went 8 → 7 keys with no lane disabled. Router restarted and verified: `/health/liveliness` OK and a live `free` completion returned normally.
+- The old `GEMINI_8` secret value is still in Infisical as a rollback. Remove it once the new key is confirmed working.
 
 ---
 
@@ -199,4 +230,10 @@ m=[dict(sender_name='Ana R',sender_email='ana@x.com',topic='Housing',message='Re
 print(build_digest_text(district=1, council_member_name='Christopher Marte', messages=m))"
 ```
 
-**Then, in order:** (1) review the uncommitted Stage 1 code against §4, (2) **commit it**, (3) wire the LLM summarizer with §4.2's quote-anchoring guardrails, (4) show Elliot the rendered digest. Do not start Stage 2 until the domain and Resend account exist.
+**Then, in order:**
+1. **Review** the machine-written Stage 1 code (`engine/queue.py`, `engine/digest_builder.py`, `scripts/send_digests.py`) against §4. It is committed but not human-reviewed.
+2. **Replace the placeholder** `NYC_BRIDGE_GEMINI_KEY` in Infisical with the real AI Studio key (§6), then make the **first live Gemini call** — that path has never run against the real API. Confirm real model output still passes `_verify_prose`; if the guardrail proves too strict on genuine output, tune it **without** removing the fabrication checks.
+3. **Decide hosting** (§6) — Cloud Run + Firestore port, or stay on the VPS.
+4. **Stage 2** only once the domain + Resend account exist.
+
+Do not start the Playwright/form work (§3). Do not let the README ship as-is (§0).
