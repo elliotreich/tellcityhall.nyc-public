@@ -6,6 +6,7 @@ shapely>=2.0.0
 fastapi>=0.100.0
 uvicorn>=0.30.0
 jinja2>=3.0.0
+python-multipart>=0.0.9
 
 # Python 3.10+ required (3.9 lacks loop-free asyncio.Semaphore construction).
 # playwright is for the out-of-scope form automation; digest work does not need it.
