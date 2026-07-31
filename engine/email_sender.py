@@ -343,6 +343,32 @@ class EmailSender:
 
         return await self._send_via_smtp_msg(to_email, to_name, msg)
 
+    async def send_verification(
+        self,
+        to_email: str,
+        sender_name: str,
+        verification_url: str,
+    ) -> EmailDeliveryResult:
+        """Send the constituent's email-verification message."""
+        await self._rate_limit()
+        subject = "Confirm your NYC Bridge message"
+        body = (
+            f"Hi {sender_name},\n\n"
+            "Please confirm your email address so NYC Bridge can include your "
+            "message in the next digest for your City Council district:\n\n"
+            f"{verification_url}\n\n"
+            "If you did not submit a message through NYC Bridge, you can ignore "
+            "this email."
+        )
+
+        if SENDGRID_API_KEY:
+            return await self._send_via_sendgrid(to_email, subject, body, to_email)
+
+        if MAILGUN_API_KEY and MAILGUN_DOMAIN:
+            return await self._send_via_mailgun(to_email, subject, body, to_email)
+
+        return await self._send_via_smtp(to_email, sender_name, subject, body, to_email)
+
     async def _send_via_smtp_msg(
         self,
         to_email: str,

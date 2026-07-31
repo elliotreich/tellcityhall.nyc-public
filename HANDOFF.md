@@ -15,14 +15,33 @@ Goal: take NYC Bridge from "working lookup engine" to "launchable product that e
 
 ## 1. Where the code is
 
+> ### ⛔ START HERE — read before running anything
+> **All digest work is on the `digest-mode` branch, pushed to GitHub.** `main` is stale
+> (`f37cbc1`) and does NOT contain it. Clone and check out `digest-mode`:
+> ```bash
+> git clone -b digest-mode https://github.com/elliotreich/nyc-bridge.git
+> ```
+> **Do NOT work from any directory named `nyc-bridge.broken-*`** — that is a backup of a
+> corrupted repo with no `.git` and no digest code. On 2026-07-27 a Codex session found it,
+> assumed the digest work didn't exist, and planned to build the out-of-scope Playwright
+> work. The Mac copy has been deleted; one remains on the VPS as a rollback.
+> **Also do not confuse this with `your-nyc` / `myfree.nyc`** — a different, live project
+> with its own `HANDOFF.md`.
+
 | | |
 |---|---|
 | **Repo** | `github.com/elliotreich/nyc-bridge` (private) |
-| **VPS path** | `elliot@burningbush:~/Projects/dev/nyc-bridge` (`ssh vps`) |
-| **HEAD** | `f37cbc1` — matches GitHub `refs/heads/main` |
-| **Branch to work on** | `digest-mode` (already created, checked out on the VPS) |
-| **Tests** | **50/50 pass.** Verified 2026-07-27 via `./.venv/bin/python -m pytest tests/ -q` |
+| **Branch — all digest work** | **`digest-mode`** @ `5be64bd` (on GitHub) |
+| **`main`** | `f37cbc1` — stale, pre-digest. Do not start here. |
+| **Mac clone** | `~/syncthing-shared/dev/nyc-bridge` |
+| **VPS clone** | `elliot@burningbush:~/Projects/dev/nyc-bridge` (`ssh vps`) |
+| **Tests** | **110/110 pass.** Verified 2026-07-27 |
 | **Stack** | Python 3.11, FastAPI, uvicorn, stdlib `sqlite3`, `aiosmtplib`, shapely, jinja2 |
+
+**If the VPS is unreachable** (Tailscale down, no DNS), just clone from GitHub and work
+locally — nothing in Stage 1 requires the VPS. Note `requirements.txt` pins `playwright`,
+which is heavy and **not needed for digest work**; if install fails, install everything
+except playwright.
 
 ### Git note (already fixed — don't re-diagnose)
 The VPS repo previously reported `bad object HEAD` / invalid sha1 `f37cbc1`. **This was not corruption.** The VPS has no GitHub credentials (`gh` not logged in; the only SSH key present is a deploy key scoped to a different repo, `contacts-archive`), so it could never fetch the newest commit. A healthy `.git` was copied from a Mac clone on 2026-07-27; `git fsck` is now silent and `git status` is clean. A backup of the old state is at `~/Projects/dev/nyc-bridge.broken-2026-07-27` — safe to delete once you're confident.
@@ -206,6 +225,7 @@ These are **not** blockers for Stage 1, but they are real and should not be forg
 - **The BetaNYC story.** Elliot's 2026-06-03 outreach went to `andrew@beta.nyc` **and** `noel@beta.nyc`. **Only one bounce exists — for Noel.** Andrew most likely received it and simply didn't reply. The bounce was a misconfigured Gmail "send-as" through `smtp.resend.com` (`550 idempotency key`) on Elliot's *personal* pipe — which is now irrelevant to the product, since the product gets its own domain and account. **Do not describe this as "BetaNYC never received it."**
 - **The BetaNYC meeting was never a true blocker.** It was going to answer one design question — individual sends vs. digest. Elliot has now answered it himself, and the answer is well-supported (51/51 Council offices, one email domain). Skipping the consult costs external validation, not capability. Do not treat it as an outstanding dependency.
 - **`nyc.elliotreich.com` is a DIFFERENT project** (now live as `myfree.nyc`). It has nothing to do with NYC Bridge. NYC Bridge has never had a website.
+- **A prior Codex session (2026-07-27) failed without changing anything.** Recorded so it isn't repeated: it ran on the **Mac**, where `~/Projects` does not exist, so it never found the repo or this handoff; the Mac had **no working DNS** (`cannot resolve pypi.org`, `tailscale status` → "Failed to load preferences"), so it could neither install dependencies nor reach the VPS; it then worked from `nyc-bridge.broken-2026-07-27`, concluded the digest work didn't exist, and drafted a plan to build the **out-of-scope Playwright automation** before hitting rate limits. It read `your-nyc/HANDOFF.md` (a different project) rather than this file. **Nothing it produced should be acted on.** The repo was verified untouched afterward: 3 commits intact, clean tree, 110 tests passing. Mitigations since: `digest-mode` pushed to GitHub, a Mac clone created, and the misleading backup directory deleted from the Mac.
 - **`civic-bridge` and `nyc-bridge` are separate repos and must not be merged.** Civic Bridge is the *federal* app (Congress) and is live at `congress.elliotreich.com` via `civic-bridge.service` on port 8081. They were painfully untangled on 2026-05-30.
 
 ---
@@ -213,12 +233,22 @@ These are **not** blockers for Stage 1, but they are real and should not be forg
 ## 9. First command
 
 ```bash
-ssh vps
-cd ~/Projects/dev/nyc-bridge && git branch --show-current   # -> digest-mode
-git status --short                                           # -> uncommitted Stage 1 work
-./.venv/bin/python -m pytest tests/ -q                       # -> 95 passed
+git clone -b digest-mode https://github.com/elliotreich/nyc-bridge.git
+cd nyc-bridge && git log --oneline -3   # -> 5be64bd, 3280815, 59d0bcc
+python3 -m venv .venv                   # MUST be Python 3.10+, NOT macOS system 3.9
+.venv/bin/pip install pyyaml httpx aiosmtplib shapely fastapi uvicorn jinja2 pytest pytest-asyncio
+.venv/bin/python -m pytest tests/ -q    # -> 110 passed
 cat DIGEST_SPEC.md HANDOFF.md
 ```
+
+**Two install gotchas, both verified 2026-07-27:**
+- **Python 3.10+ is required.** On macOS system Python 3.9, 12 tests fail with
+  `RuntimeError: There is no current event loop` — 3.9 cannot construct
+  `asyncio.Semaphore()` outside a running loop. The code is fine; 3.9 is too old.
+  Verified 110/110 on 3.14 and on the VPS's 3.10.
+- **Skip `playwright`.** It is in `requirements.txt` for the out-of-scope form
+  automation, is a heavy install, and digest work does not import it. Install the
+  packages listed above instead of `-r requirements.txt`.
 
 Render a digest yourself before changing anything:
 ```bash

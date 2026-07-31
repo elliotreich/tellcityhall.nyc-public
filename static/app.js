@@ -267,11 +267,14 @@
         var officials = data.officials || [];
         var summary = data.summary || {};
         var sent = summary.sent || 0;
+        var queued = officials.filter(function(r) { return r.status === 'queued'; }).length;
         var total = summary.total || officials.length;
         var failed = summary.failed || 0;
         var manual = summary.manual_redirect || 0;
 
-        if (sent === total) {
+        if (queued > 0 && failed === 0) {
+            resultTitle.textContent = 'Your Council message is queued';
+        } else if (sent === total) {
             resultTitle.textContent = 'Message sent to all ' + total + ' officials!';
         } else if (sent > 0) {
             resultTitle.textContent = 'Sent to ' + sent + ' of ' + total + ' officials';
@@ -283,13 +286,14 @@
 
         var summaryParts = [];
         if (sent > 0) summaryParts.push(sent + ' sent');
+        if (queued > 0) summaryParts.push(queued + ' queued for a Council digest');
         if (failed > 0) summaryParts.push(failed + ' failed');
         if (manual > 0) summaryParts.push(manual + ' need manual follow-up');
         resultSummary.innerHTML = summaryParts.length > 0
             ? '<p class="result-summary-text">' + summaryParts.join(' · ') + '</p>'
             : '';
 
-        var icons = { sent: '✓', delivered: '✓', failed: '✗', skipped: '⊘', manual_redirect: '🔗' };
+        var icons = { sent: '✓', queued: '◷', delivered: '✓', failed: '✗', skipped: '⊘', manual_redirect: '🔗' };
 
         resultList.innerHTML = officials.map(function(r) {
             return '<div class="result-item">' +
@@ -299,7 +303,7 @@
                 '<div class="result-detail">' + escHtml(r.detail || r.error || '') + '</div>' +
                 (r.email_sent_to ? '<div class="result-email-sent" style="font-size:0.75rem;color:var(--white-muted);">To: ' + escHtml(r.email_sent_to) + '</div>' : '') +
                 '</div>' +
-                '<span class="result-method">' + (r.contact_method === 'email' ? 'email' : r.contact_method === 'form' ? 'form' : r.contact_method === 'email_fallback' ? 'email' : '') + '</span>' +
+                '<span class="result-method">' + (r.contact_method === 'email' ? 'email' : r.contact_method === 'digest' ? 'digest' : r.contact_method === 'form' ? 'form' : r.contact_method === 'email_fallback' ? 'email' : '') + '</span>' +
                 '</div>';
         }).join('');
 
