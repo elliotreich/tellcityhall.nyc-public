@@ -20,11 +20,17 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from config import PROJECT_ROOT, FORM_SUBMIT_TIMEOUT, MAX_CONCURRENT_SUBMISSIONS, DELAY_BETWEEN_SUBMISSIONS
+from config import (
+    PROJECT_ROOT,
+    FORM_SUBMIT_TIMEOUT,
+    MAX_CONCURRENT_SUBMISSIONS,
+    DELAY_BETWEEN_SUBMISSIONS,
+    DIGEST_VERIFY_BASE_URL,
+)
 from engine.nyc_address_resolver import validate_and_resolve, autocomplete
 from engine.nyc_officials import get_officials_for_address, NYCOfficial
 from engine.email_sender import get_email_sender
-from engine.queue import init_db, verify_message
+from engine.queue import enqueue, init_db, verify_message
 
 
 @asynccontextmanager
@@ -176,6 +182,44 @@ async def api_send(
         start_time = time.monotonic()
 
         try:
+            if official.title.startswith("City Council Member"):
+                message_id, verification_token = enqueue(
+                    district=result.council_district,
+                    sender_name=f"{first_name} {last_name}".strip(),
+                    sender_email=email,
+                    sender_address=result.address.standardized,
+                    topic=topic,
+                    message=message,
+                )
+                verification_url = (
+                    f"{DIGEST_VERIFY_BASE_URL.rstrip('/')}/verify/{verification_token}"
+                )
+                verification = await email_sender.send_verification(
+                    to_email=email,
+                    sender_name=first_name,
+                    verification_url=verification_url,
+                )
+                duration = time.monotonic() - start_time
+                delivery_results.append({
+                    "title": official.title,
+                    "name": official.name,
+                    "contact_method": "digest",
+                    "status": "queued" if verification.success else "failed",
+                    "detail": (
+                        "Queued for the next Council district digest. "
+                        "Check your email to confirm your address."
+                        if verification.success
+                        else verification.error
+                    ),
+                    "error": verification.error,
+                    "duration": round(duration, 1),
+                    "email_sent_to": official.email if verification.success else "",
+                    "verification_email": email if verification.success else "",
+                    "message_id": message_id,
+                    "phone": official.phone,
+                })
+                continue
+
             if official.contact_method == "email":
                 # Email delivery
                 addr = result.address
@@ -279,7 +323,7 @@ async def api_send(
             })
 
     # Summary
-    sent = sum(1 for r in delivery_results if r["status"] == "sent")
+    sent = sum(1 for r in delivery_results if r["status"] in {"sent", "queued"})
     failed = sum(1 for r in delivery_results if r["status"] == "failed")
     manual = sum(1 for r in delivery_results if r["status"] == "manual_redirect")
     skipped = sum(1 for r in delivery_results if r["status"] == "skipped")
