@@ -13,7 +13,7 @@ NYC Bridge is a nonpartisan civic engagement tool that lets New Yorkers write a 
 2. **Locate** your 11 officials (Council + Borough President + city/state)
 3. **Deliver** via official forms — no scraping, no pretending to be you
 
-See private `PROJECT_SUMMARY.md` and `CLOSING_THE_GAP.md` for the full scope.
+The full product scope remains in the private source repository.
 
 ## Architecture (excerpt)
 
